@@ -1,0 +1,584 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내 PC 상태 기록</title>
+<meta name="color-scheme" content="light dark">
+<style>
+/* ---------- 디자인 토큰: 따뜻한 중성 배경, 낮은 채도, 부드러운 모서리 ---------- */
+:root {
+  --bg: #faf9f5; --surface: #ffffff; --surface-2: #f4f1e8; --text: #2b2926; --muted: #675f55; --line: #e4dfd2;
+  --accent: #a9482a; --accent-soft: #f6e5dc; --focus: #1f5fbf;
+  --h0: #efe9db; --h1: #e3b768; --h2: #b3452c; --nodata: #e9e4d6; --tex: rgba(0,0,0,.34);
+  --ok-bg: #e4efe5; --ok-fg: #2f5b3a; --warn-bg: #faebc8; --warn-fg: #6e4700; --hot-bg: #f7dcd3; --hot-fg: #8c2a16; --none-bg: #ebe7db; --none-fg: #5f574c;
+  --seg: #ddd2f0; --seg-fg: #4a3a73;
+  --radius: 14px; --shadow: 0 1px 2px rgba(60,50,30,.06), 0 4px 16px rgba(60,50,30,.05);
+  --font: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+:root[data-theme="dark"] {
+  --bg: #1c1b19; --surface: #26241f; --surface-2: #302d27; --text: #efece3; --muted: #b0a999; --line: #3d3a32;
+  --accent: #eb8e6d; --accent-soft: #43302a; --focus: #8fb8ff;
+  --h0: #2f2c26; --h1: #a77b2c; --h2: #f2906a; --nodata: #34312a; --tex: rgba(255,255,255,.42);
+  --ok-bg: #243a2b; --ok-fg: #a8d8b3; --warn-bg: #45381a; --warn-fg: #f1d08a; --hot-bg: #4a2a21; --hot-fg: #ffb9a3; --none-bg: #38352d; --none-fg: #c9c2b2;
+  --seg: #3b3354; --seg-fg: #d6c8f5;
+  --shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1b19; --surface: #26241f; --surface-2: #302d27; --text: #efece3; --muted: #b0a999; --line: #3d3a32;
+    --accent: #eb8e6d; --accent-soft: #43302a; --focus: #8fb8ff;
+    --h0: #2f2c26; --h1: #a77b2c; --h2: #f2906a; --nodata: #34312a; --tex: rgba(255,255,255,.42);
+    --ok-bg: #243a2b; --ok-fg: #a8d8b3; --warn-bg: #45381a; --warn-fg: #f1d08a; --hot-bg: #4a2a21; --hot-fg: #ffb9a3; --none-bg: #38352d; --none-fg: #c9c2b2;
+    --seg: #3b3354; --seg-fg: #d6c8f5; --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); -webkit-text-size-adjust: 100%; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 1.6rem; line-height: 1.3; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 1.2rem; margin: 0 0 12px; letter-spacing: -.005em; }
+h3 { font-size: 1rem; margin: 0 0 8px; }
+p { margin: 0 0 10px; }
+.muted { color: var(--muted); }
+.small { font-size: .875rem; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+section { margin-top: 24px; }
+.grid3 { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 920px) { .grid3 { grid-template-columns: 1fr; } }
+
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; justify-content: space-between; }
+.top .sub { color: var(--muted); font-size: .9rem; margin-top: 4px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button, .btn { font: inherit; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; transition: background-color .15s, border-color .15s; }
+button:hover { background: var(--surface-2); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.primary { color: #1c1b19; }
+button.primary:hover { filter: brightness(1.06); background: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 3px; gap: 2px; }
+.seg button { border: 0; min-height: 38px; background: transparent; padding: 0 14px; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent); }
+
+.banner { margin-top: 16px; background: var(--accent-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; font-size: .92rem; }
+.banner.stale { background: var(--warn-bg); color: var(--warn-fg); }
+
+/* 칩: 색 + 기호 + 글자를 함께 쓴다 */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.chip svg { width: 11px; height: 11px; flex: none; }
+.c-ok { background: var(--ok-bg); color: var(--ok-fg); } .c-warn { background: var(--warn-bg); color: var(--warn-fg); } .c-hot { background: var(--hot-bg); color: var(--hot-fg); } .c-none { background: var(--none-bg); color: var(--none-fg); }
+.c-sup { background: var(--accent-soft); color: var(--accent); } .c-ag { background: var(--ok-bg); color: var(--ok-fg); }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+ul.plain li { padding: 8px 0; border-top: 1px solid var(--line); } ul.plain li:first-child { border-top: 0; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: .92rem; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+
+/* ---------- 히트맵 ---------- */
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 4px 0 8px; }
+.controls label { font-size: .85rem; color: var(--muted); display: block; margin: 0 0 4px 4px; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: .85rem; color: var(--muted); margin: 8px 0 4px; }
+.legend .bar { width: 180px; height: 12px; border-radius: 6px; border: 1px solid var(--line); }
+.legend .sw { display: inline-block; width: 18px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--line); }
+details.group { margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+details.group > summary { cursor: pointer; list-style: none; padding: 12px 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; min-height: 48px; border-radius: var(--radius); }
+details.group > summary::-webkit-details-marker { display: none; }
+details.group > summary::before { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex: none; }
+details.group[open] > summary::before { transform: rotate(45deg); }
+.gbody { padding: 0 16px 16px; }
+.explain-btn { margin-left: auto; min-height: 36px; padding: 0 12px; font-size: .85rem; font-weight: 500; }
+.explain { background: var(--surface-2); border-radius: 10px; padding: 10px 14px; font-size: .9rem; margin: 0 0 10px; }
+.hm-scroll { overflow-x: auto; padding-bottom: 6px; }
+table.hm { border-collapse: separate; border-spacing: 0; font-size: .82rem; }
+table.hm th, table.hm td { padding: 0; }
+table.hm thead th { font-weight: 500; color: var(--muted); height: 22px; white-space: nowrap; font-size: .75rem; text-align: left; }
+table.hm th.lab { position: sticky; left: 0; background: var(--surface); z-index: 2; min-width: 168px; max-width: 220px; padding: 0 10px 0 0; text-align: left; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 26px; }
+table.hm tr.agg th.lab { font-weight: 700; }
+table.hm tr.agg td.c { box-shadow: inset 0 -2px 0 var(--accent); }
+td.c { width: var(--cw, 10px); min-width: var(--cw, 10px); height: 24px; border-right: 1px solid var(--surface); border-bottom: 1px solid var(--surface); cursor: default; }
+td.c.nd { background: var(--nodata) !important; background-image: none; }
+td.c.w { background-image: radial-gradient(circle at 50% 50%, var(--tex) 1.1px, transparent 1.6px); background-size: 5px 5px; }
+td.c.h { background-image: repeating-linear-gradient(45deg, var(--tex) 0 2px, transparent 2px 5px); }
+td.c.cat { background-image: none; }
+td.c:focus { outline: 3px solid var(--focus); outline-offset: -2px; z-index: 3; position: relative; }
+td.st { padding-left: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text); text-align: right; }
+td.st.stat { padding-left: 14px; }
+th.stath { text-align: right !important; padding-left: 16px; }
+tr.mk td.c { height: 18px; }
+td.c.seg-on { background: var(--seg) !important; background-image: none; }
+td.c.note-on { background: var(--surface); color: var(--accent); text-align: center; font-size: .8rem; line-height: 18px; }
+.hm-empty { padding: 14px 16px; background: var(--surface-2); border-radius: 10px; font-size: .92rem; }
+.hm-empty ol { margin: 6px 0 0 20px; padding: 0; }
+.rowchip { margin-left: 8px; }
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--text); color: var(--bg); padding: 8px 12px; border-radius: 10px; font-size: .85rem; line-height: 1.45; max-width: 300px; box-shadow: 0 6px 24px rgba(0,0,0,.25); display: none; }
+#tip b { font-variant-numeric: tabular-nums; }
+.tabletoggle { margin-top: 10px; }
+.tabletoggle summary { cursor: pointer; font-size: .88rem; color: var(--muted); min-height: 36px; display: flex; align-items: center; }
+.datatbl { overflow-x: auto; max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+.datatbl table { border-collapse: collapse; font-size: .8rem; width: max-content; min-width: 100%; }
+.datatbl th, .datatbl td { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.datatbl th:first-child, .datatbl td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.datatbl thead th { position: sticky; top: 0; background: var(--surface-2); }
+.catlegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; margin: 6px 0 0; }
+.catlegend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+/* 원인 후보 */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.hyp { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.hyp:first-of-type { border-top: 0; }
+.hyp .why { grid-column: 2; font-size: .88rem; color: var(--muted); }
+.cat-h { font-size: .8rem; letter-spacing: .04em; color: var(--muted); font-weight: 700; margin: 18px 0 2px; }
+table.plain { border-collapse: collapse; width: 100%; font-size: .9rem; }
+table.plain th, table.plain td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+table.plain th { color: var(--muted); font-weight: 600; font-size: .82rem; }
+.num { font-variant-numeric: tabular-nums; text-align: right !important; }
+.up { color: var(--hot-fg); } .down { color: var(--ok-fg); }
+footer { margin-top: 32px; font-size: .85rem; color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+@media print { .actions, .controls, .explain-btn, .tabletoggle { display: none !important; } details.group { break-inside: avoid; } body { background: #fff; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>내 PC 상태 기록</h1>
+      <div class="sub" id="subtitle"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="btn-copy" type="button">AI에게 보여줄 내용 복사</button>
+      <button id="btn-csv" type="button">표(CSV) 내려받기</button>
+      <button id="btn-theme" type="button" aria-label="화면 색상 바꾸기">라이트 / 다크</button>
+    </div>
+  </header>
+  <div class="sr" id="live" aria-live="polite"></div>
+  <div id="stale"></div>
+  <div class="banner" role="note"><b>먼저 알아두세요.</b> 이 화면의 색 기준은 <b>임시 기준</b>이라 이 PC의 정상 범위와 다를 수 있어요. 도구는 원인을 단정하지 않습니다. 진하게 보이는 곳을 찾고, 같은 시각에 다른 줄도 같이 진해지는지 본 다음, 위 버튼으로 복사한 내용을 AI와 함께 살펴보세요. 모든 데이터는 이 PC 안에만 있고 어디로도 전송되지 않습니다.</div>
+
+  <section aria-labelledby="h-glance">
+    <h2 id="h-glance" class="sr">한눈에 보기</h2>
+    <div class="grid3" id="glance"></div>
+  </section>
+
+  <section aria-labelledby="h-heat">
+    <div class="card">
+      <h2 id="h-heat">시간에 따른 변화 (히트맵)</h2>
+      <p class="muted small">가로는 시간, 세로는 부품이에요. 진한 칸일수록 값이 큰 순간이고, 무늬(점·빗금)가 있는 칸은 임시 기준으로 주의·높음인 구간이에요(색만으로 구분하지 않도록 넣었어요). 칸을 누르거나 방향키로 옮기면 정확한 값이 나와요.</p>
+      <div class="controls">
+        <div><label>색 기준</label><div class="seg" role="group" aria-label="색 기준"><button type="button" data-scale="abs" aria-pressed="true">절대 기준</button><button type="button" data-scale="rel" aria-pressed="false">상대 (최소~최대)</button></div></div>
+        <div><label>칸의 값</label><div class="seg" role="group" aria-label="칸의 값"><button type="button" data-value="avg" aria-pressed="true">평균</button><button type="button" data-value="peak" aria-pressed="false">가장 높았던 순간</button></div></div>
+        <div><label>줄 순서</label><div class="seg" role="group" aria-label="줄 순서"><button type="button" data-sort="default" aria-pressed="true">기본</button><button type="button" data-sort="anomaly" aria-pressed="false">이상한 순</button></div></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="groups"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-hyp">
+    <div class="card">
+      <h2 id="h-hyp">가능한 원인 후보 체크리스트</h2>
+      <p class="muted small">원인을 확정하는 목록이 아니에요. 각 후보에 대해 “데이터에서 관측됐는지”만 표시합니다. 판단은 AI나 사용자가 해요.</p>
+      <div class="filters" role="group" aria-label="후보 보기"><button type="button" data-f="all" aria-pressed="true">전체</button><button type="button" data-f="supports" aria-pressed="false">근거 있음</button><button type="button" data-f="against" aria-pressed="false">근거 없음</button><button type="button" data-f="no_data" aria-pressed="false">데이터 없음</button></div>
+      <div id="hyps"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-seg">
+    <div class="card">
+      <h2 id="h-seg">내가 표시한 구간·메모</h2>
+      <div id="segs"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-sys">
+    <div class="card">
+      <h2 id="h-sys">시스템 정보</h2>
+      <div id="sys"></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script id="payload" type="application/json">__PAYLOAD__</script>
+<script>
+"use strict";
+const P = JSON.parse(document.getElementById('payload').textContent);
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = { get(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+const state = { scale: store.get('pcc.scale', 'abs'), value: store.get('pcc.value', 'avg'), sort: store.get('pcc.sort', 'default'), filter: 'all' };
+
+/* ---------- 아이콘 (이모지 대신 작은 SVG) ---------- */
+const ICON = {
+  ok: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.6 2.6L10 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5l5 9H1z" fill="currentColor"/></svg>',
+  hot: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 .8l4.2 7.2H1.8z M6 5l4.2 7H1.8z" fill="currentColor"/></svg>',
+  none: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  sup: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="currentColor"/></svg>',
+  ag: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>'
+};
+const chip = (cls, icon, text) => `<span class="chip ${cls}">${ICON[icon]}${esc(text)}</span>`;
+const readingChip = r => {
+  if (!r) return '';
+  if (r.indexOf('높음') >= 0 || r.indexOf('낮음') >= 0) return chip('c-hot', 'hot', r.replace(' (임시 기준)', '') + '·임시');
+  if (r.indexOf('주의') >= 0) return chip('c-warn', 'warn', '주의·임시');
+  if (r.indexOf('정상') >= 0) return chip('c-ok', 'ok', '정상·임시');
+  if (r.indexOf('측정값 없음') >= 0) return chip('c-none', 'none', '값 없음');
+  return chip('c-none', 'none', '기준 없음');
+};
+
+/* ---------- 한국어 라벨 ---------- */
+const LABELS = [
+  [/^cpu\.util$/, 'CPU 사용률'], [/^cpu\.perf_pct$/, 'CPU 클럭 비율'], [/^cpu\.dpc$/, '드라이버 처리(DPC)'], [/^cpu\.interrupt$/, '하드웨어 인터럽트'],
+  [/^cpu\.core_max$/, '가장 바쁜 코어'], [/^cpu\.core_over90_count$/, '90% 넘은 코어 수'], [/^cpu\.core\.(\d+)_(\d+)$/, m => '코어 ' + m[2]],
+  [/^mem\.avail_mb$/, '남은 메모리'], [/^mem\.commit_pct$/, '메모리 약속량(커밋)'], [/^mem\.pages_per_sec$/, '메모리 페이징'],
+  [/^disk\.(.+)\.busy$/, m => '디스크 ' + m[1] + ' 사용 시간'], [/^disk\.(.+)\.queue$/, m => '디스크 ' + m[1] + ' 대기열'], [/^disk\.(.+)\.latency_ms$/, m => '디스크 ' + m[1] + ' 응답 시간'],
+  [/^net\.(.+)\.kbps$/, m => '네트워크 ' + m[1].replace(/_/g, ' ')],
+  [/^gpu\.engine\.(.+)$/, m => 'GPU ' + m[1].replace(/_/g, ' ') + ' 엔진'], [/^gpu\.vram_used_mb$/, 'GPU 전용 메모리'], [/^gpu\.shared_used_mb$/, 'GPU 공유 메모리'],
+  [/^nv\.gpu\d+\.temp_c$/, 'GPU 온도'], [/^nv\.gpu\d+\.util$/, 'GPU 사용률'], [/^nv\.gpu\d+\.mem_util$/, 'GPU 메모리 컨트롤러'], [/^nv\.gpu\d+\.fan_pct$/, 'GPU 팬 속도'],
+  [/^nv\.gpu\d+\.sm_mhz$/, 'GPU 코어 클럭'], [/^nv\.gpu\d+\.mem_mhz$/, 'GPU 메모리 클럭'], [/^nv\.gpu\d+\.max_sm_mhz$/, 'GPU 최대 클럭'], [/^nv\.gpu\d+\.enc_util$/, 'GPU 인코더'], [/^nv\.gpu\d+\.dec_util$/, 'GPU 디코더(영상 재생)'],
+  [/^nv\.gpu\d+\.power_w$/, 'GPU 전력'], [/^nv\.gpu\d+\.vram_used_mb$/, 'GPU 메모리 사용'], [/^nv\.gpu\d+\.vram_total_mb$/, 'GPU 메모리 전체'],
+  [/^nv\.gpu\d+\.throttle$/, 'GPU 성능 제한 사유'], [/^nv\.gpu\d+\.pstate$/, 'GPU 성능 상태'],
+  [/^hw\.temp_c\.(.+)$/, m => '온도 ' + m[1].replace(/_/g, ' ')], [/^hw\.fan_rpm\.(.+)$/, m => '팬 ' + m[1].replace(/_/g, ' ') + ' (RPM)'], [/^hw\.fan_duty_pct\.(.+)$/, m => '팬 출력 ' + m[1].replace(/_/g, ' ')],
+  [/^fan_pct\.(.+)$/, m => '팬 ' + m[1].replace(/_/g, ' ')],
+  [/^fan_group\.case\.mean_pct$/, '케이스 팬 통합 (평균)'], [/^fan_group\.case\.max_pct$/, '케이스 팬 통합 (최고)'],
+  [/^fan_group\.cpu\.mean_pct$/, 'CPU 팬 통합 (평균)'], [/^fan_group\.cpu\.max_pct$/, 'CPU 팬 통합 (최고)'],
+  [/^fan_group\.gpu\.mean_pct$/, 'GPU 팬 통합 (평균)'], [/^fan_group\.gpu\.max_pct$/, 'GPU 팬 통합 (최고)'],
+  [/^proc\.count$/, '프로세스 수'], [/^proc\.top_cpu_core_pct$/, 'CPU 1위 프로세스 사용률'], [/^proc\.top_gpu_pct$/, 'GPU 1위 프로세스 사용률'], [/^proc\.top_cpu$/, 'CPU 1위 프로세스'], [/^proc\.top_gpu$/, 'GPU 1위 프로세스'],
+  [/^collector\.cpu_core_pct$/, '이 도구 자신의 CPU'], [/^collector\.wmi_host_cpu_core_pct$/, 'Windows 조회 서비스 CPU'], [/^collector\.ram_mb$/, '이 도구 자신의 메모리']
+];
+function labelOf(key) { for (const [re, f] of LABELS) { const m = key.match(re); if (m) return typeof f === 'function' ? f(m) : f; } return key; }
+
+/* ---------- CSV 읽기 ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (ch !== '\r') cur += ch;
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+const csv = parseCSV(P.csv);
+const header = csv[0], body = csv.slice(1).filter(r => r.length > 3);
+const N = body.length;
+const ix = {}; header.forEach((h, i) => ix[h] = i);
+const strCols = new Set(P.strCols || []);
+const numCols = header.filter(h => !['time', 'min_since_boot', 'phase', 'marker'].includes(h) && !h.endsWith('__max') && !strCols.has(h));
+const times = body.map(r => r[ix.time]), mins = body.map(r => parseFloat(r[ix.min_since_boot])), phases = body.map(r => r[ix.phase]), marks = body.map(r => r[ix.marker]);
+const num = {}, pk = {};
+for (const k of numCols) {
+  num[k] = Float64Array.from(body, r => { const v = parseFloat(r[ix[k]]); return isNaN(v) ? NaN : v; });
+  if (ix[k + '__max'] != null) pk[k] = Float64Array.from(body, r => { const v = parseFloat(r[ix[k + '__max']]); return isNaN(v) ? NaN : v; });
+}
+const strs = {}; for (const k of strCols) if (ix[k] != null) strs[k] = body.map(r => r[ix[k]]);
+
+/* ---------- 시간 묶기 (최대 96칸) ---------- */
+const MAXB = 96, binSize = Math.max(1, Math.ceil(N / MAXB)), B = Math.ceil(N / binSize);
+const CW = Math.max(6, Math.min(14, Math.floor(620 / B))); // 칸 폭(px): 라벨+칸+숫자 열이 데스크톱 폭에 한 번에 들어오게
+const binIdx = b => [b * binSize, Math.min(N, (b + 1) * binSize)];
+function binSeries(arr, mode) {
+  const out = new Float64Array(B);
+  for (let b = 0; b < B; b++) {
+    const [s, e] = binIdx(b); let sum = 0, c = 0, mx = NaN;
+    for (let i = s; i < e; i++) { const v = arr[i]; if (!isNaN(v)) { sum += v; c++; if (isNaN(mx) || v > mx) mx = v; } }
+    out[b] = c ? (mode === 'avg' ? sum / c : mx) : NaN;
+  }
+  return out;
+}
+const binned = { avg: {}, peak: {} };
+for (const k of numCols) { binned.avg[k] = binSeries(num[k], 'avg'); binned.peak[k] = binSeries(pk[k] || num[k], 'max'); }
+const strBin = {};
+for (const k in strs) { strBin[k] = []; for (let b = 0; b < B; b++) { const [s, e] = binIdx(b); const cnt = {}; let best = '', bc = 0; for (let i = s; i < e; i++) { const v = strs[k][i]; if (!v) continue; cnt[v] = (cnt[v] || 0) + 1; if (cnt[v] > bc) { bc = cnt[v]; best = v; } } strBin[k].push(best); } }
+
+/* ---------- 색 ---------- */
+let rampCache = null;
+function parseHex(h) { h = h.trim().replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+function ramp() { if (!rampCache) { const cs = getComputedStyle(document.documentElement); rampCache = ['--h0', '--h1', '--h2'].map(v => parseHex(cs.getPropertyValue(v))); } return rampCache; }
+const mix = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
+function heat(t) { t = Math.max(0, Math.min(1, t)); const [a, b, c] = ramp(); const m = t < 0.5 ? mix(a, b, t * 2) : mix(b, c, (t - 0.5) * 2); return `rgb(${m[0]},${m[1]},${m[2]})`; }
+const CATCOL = ['#7a9cc6', '#c68a7a', '#8bb08a', '#b79bc9', '#c9b46a', '#7fb5b0', '#c47f9f', '#9a9a9a'];
+const catColor = (v, list) => { const i = list.indexOf(v); return i < 0 ? CATCOL[7] : CATCOL[i % 7]; };
+
+/* ---------- 수치 해석 ---------- */
+const cat = P.catalog || {};
+const info = k => cat[k] || { unit: '', description: '', direction: 'none', warn: null, hot: null, scale: 'relative' };
+function tAbs(k, v) {
+  const f = info(k);
+  if (f.warn == null) return (f.unit === '%' && f.scale === 'absolute') ? Math.min(1, v / 100) : null;
+  if (f.direction === 'high') { if (v >= f.hot) return 1; if (v >= f.warn) return 0.5 + 0.4 * (v - f.warn) / (f.hot - f.warn || 1); return Math.max(0, 0.5 * v / (f.warn || 1)); }
+  if (v <= f.hot) return 1; if (v <= f.warn) return 0.5 + 0.4 * (f.warn - v) / (f.warn - f.hot || 1); return Math.max(0, 0.5 * (1 - (v - f.warn) / (f.warn * 4)));
+}
+function fmt(v) { if (v == null || isNaN(v)) return '-'; const a = Math.abs(v); if (a >= 1000) return Math.round(v).toLocaleString('ko-KR'); if (a >= 100) return v.toFixed(0); if (a >= 10) return v.toFixed(1); return (+v.toFixed(2)).toString(); }
+const unitOf = k => { const u = info(k).unit; return u ? (u.length <= 3 ? u : '') : ''; };
+function clock(i) { const t = times[i]; return t ? t.replace('T', ' ').slice(5, 16) : ''; }
+function minToLabel(m) { m = Math.round(m); if (m < 60) return m + '분'; if (m < 1440) return Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : ''); return Math.floor(m / 1440) + '일 ' + Math.floor((m % 1440) / 60) + '시간'; }
+
+/* ---------- 행 모델 ---------- */
+const GROUPS = [
+  { id: 'cpu', title: 'CPU', match: k => /^cpu\.(util|perf_pct|core_max|core_over90_count|dpc|interrupt)$/.test(k),
+    explain: 'CPU가 얼마나 바쁜지 보여줘요. “가장 바쁜 코어”는 코어 하나에 일이 몰렸는지, “클럭 비율”은 CPU 속도가 기본값의 몇 %인지(100을 넘으면 부스트, 낮으면 절전·제한)를 뜻해요. DPC·인터럽트가 오래 높으면 드라이버 문제를 의심해 볼 수 있어요.' },
+  { id: 'cores', title: 'CPU 코어별', collapsed: true, match: k => /^cpu\.core\.\d/.test(k), explain: '코어마다 따로 본 사용률이에요. 코어 수가 많으면 줄이 길어서 기본으로 접어 뒀어요.' },
+  { id: 'mem', title: '메모리', match: k => /^mem\./.test(k),
+    explain: '“남은 메모리”가 줄거나 “약속량(커밋)”이 높으면 메모리가 빠듯하다는 뜻이에요. “페이징”은 메모리가 모자라 디스크로 오가는 정도로, 지속적으로 높으면 느려질 수 있어요.' },
+  { id: 'disk', title: '디스크', match: k => /^disk\./.test(k), explain: '“사용 시간”은 디스크가 쉬지 못한 비율, “응답 시간”은 한 번 요청하는 데 걸린 시간(ms)이에요. 응답 시간이 길고 사용 시간이 높으면 디스크가 병목일 수 있어요.' },
+  { id: 'net', title: '네트워크', match: k => /^net\./.test(k), explain: '어댑터별로 오간 데이터 양(KB/초)이에요. 속도·지연은 재지 않아요.' },
+  { id: 'gpu', title: '그래픽 (모든 제조사 공통)', match: k => /^gpu\./.test(k), explain: 'GPU의 엔진별 사용률이에요. “3D”는 그래픽, “Video Decode”는 영상 재생 해독이에요. 영상이 끊기는데 Video Decode가 0이면 GPU 가속을 못 쓰고 있을 수 있어요.' },
+  { id: 'nv', title: 'NVIDIA GPU 상세', match: k => /^nv\./.test(k), explain: 'NVIDIA 그래픽카드가 알려 주는 온도, 팬, 클럭, 전력이에요. 팬이 0%인 건 저온일 때 멈추는 정상 동작일 수 있어요. 클럭이 최대치보다 낮은데 사용률이 높다면 “성능 제한 사유”를 함께 보세요.' },
+  { id: 'sensor', title: '온도·팬 (센서 프로그램)', match: k => /^(hw\.temp_c\.|fan_pct\.|fan_group\.)/.test(k),
+    explain: '메인보드 센서에서 읽은 CPU 등의 온도와 팬 속도예요. 팬은 각자의 최대 속도 대비 %로 바꿔서 한 줄씩 보여주고, 굵은 줄이 같은 종류 팬을 합친 대표값이에요. “온도는 내려갔는데 팬은 계속 높은” 구간을 찾을 때 두 줄을 나란히 보세요.' },
+  { id: 'sensorraw', title: '센서 원본 (RPM·출력)', collapsed: true, match: k => /^hw\.(fan_rpm|fan_duty_pct)\./.test(k), explain: '팬 회전수(RPM)와 제어 출력 원본이에요.' },
+  { id: 'proc', title: '프로세스·측정 부담', match: k => /^(proc\.|collector\.)/.test(k), explain: '“1위 프로세스 사용률”은 그 순간 가장 바쁜 프로그램의 CPU(코어 1개 기준, 100=코어 하나 가득)예요. “이 도구 자신”과 “조회 서비스”는 측정 때문에 생기는 부담이라, 1위가 이 둘이면 실제 원인이 아닐 수 있어요.' }
+];
+function buildRows() {
+  const mode = state.value;
+  const rowsByGroup = GROUPS.map(g => ({ g, rows: [] }));
+  for (const k of numCols) {
+    const idx = GROUPS.findIndex(g => g.match(k)); if (idx < 0) continue;
+    const vals = binned[mode][k]; let mn = Infinity, mxv = -Infinity, any = false;
+    for (const v of vals) if (!isNaN(v)) { any = true; if (v < mn) mn = v; if (v > mxv) mxv = v; }
+    if (!any) continue;
+    const abs = vals.map(v => isNaN(v) ? null : tAbs(k, v));
+    const rel = vals.map(v => isNaN(v) ? null : (mxv > mn ? (v - mn) / (mxv - mn) : 0));
+    const inf = info(k); const hasThr = inf.warn != null || (inf.unit === '%' && inf.scale === 'absolute');
+    const hasLevel = inf.warn != null;
+    let score = 0;
+    if (hasThr) { for (const t of abs) if (t != null && t > score) score = t; } else score = Math.min(0.6, (mxv - mn) / (Math.abs(mxv) + 1e-9) * 0.6);
+    rowsByGroup[idx].rows.push({ key: k, label: labelOf(k), vals, abs, rel, mn, mx: mxv, hasThr, hasLevel, score, agg: /^fan_group\./.test(k) });
+  }
+  for (const rg of rowsByGroup) {
+    const order = rg.rows.map((r, i) => i);
+    if (state.sort === 'anomaly') rg.rows.sort((a, b) => (a.agg - b.agg) || (b.score - a.score));
+    else if (rg.g.id === 'sensor') rg.rows.sort((a, b) => (a.agg - b.agg) || (a.key < b.key ? -1 : 1));
+  }
+  return rowsByGroup;
+}
+
+/* ---------- 마커 ---------- */
+function markerBins() {
+  const seg = new Array(B).fill(null), note = new Array(B).fill(null);
+  for (const s of (P.segments || [])) {
+    const a = Date.parse(s.start), b = Date.parse(s.end);
+    for (let i = 0; i < B; i++) { const [st, en] = binIdx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (t0 < b && t1 > a) seg[i] = s.label; }
+  }
+  for (const n of (P.notes || [])) {
+    const a = Date.parse(n.time);
+    for (let i = 0; i < B; i++) { const [st, en] = binIdx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (a >= t0 && a < t1) { note[i] = n.label; break; } }
+  }
+  return { seg, note };
+}
+
+/* ---------- 히트맵 그리기 ---------- */
+const flatRows = []; // 툴팁용
+function axisHtml(mk) {
+  const early = mins.length && mins[0] < 180; const step = Math.max(1, Math.ceil(B / 6)); const lastLabelBin = B - Math.ceil(B * 0.14); // 오른쪽 '평균/최고' 머리글과 겹치지 않게 끝쪽 눈금은 생략
+  let th = '';
+  for (let b = 0; b < B; b++) {
+    const [s] = binIdx(b);
+    const lab = (b % step === 0 && b <= lastLabelBin) ? (early ? '+' + minToLabel(mins[s]) : clock(s).slice(6)) : '';
+    th += `<th scope="col" style="text-align:left;overflow:visible"><span style="display:block;width:0;overflow:visible">${esc(lab)}</span></th>`;
+  }
+  return th;
+}
+function groupHtml(rg, mk) {
+  const { g, rows } = rg;
+  if (!rows.length) {
+    if (g.id === 'sensor') return `<details class="group" open><summary>${esc(g.title)}</summary><div class="gbody"><div class="hm-empty"><b>아직 CPU 온도와 케이스 팬 값이 없어요.</b> Windows는 이 값을 기본으로 알려 주지 않아요. 아래처럼 하면 이 줄들이 채워져요.<ol><li>무료 프로그램 LibreHardwareMonitor(또는 OpenHardwareMonitor)를 실행해 두세요.</li><li>이 도구를 계속 켜 둔 채 평소처럼 쓰고, 증상이 나타나면 기록한 뒤 다시 내보내세요.</li></ol><span class="muted small">GPU 팬 속도는 NVIDIA 상세 줄에서 볼 수 있어요. 센서 프로그램은 이 도구에 포함되어 있지 않아요.</span></div></div></details>`;
+    return '';
+  }
+  const open = g.collapsed ? '' : ' open';
+  const gi = flatRows.length;
+  let html = `<details class="group"${open}><summary><span>${esc(g.title)}</span><span class="muted small" style="font-weight:400">${rows.length}줄</span><button type="button" class="explain-btn" data-ex="${g.id}" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-${g.id}" hidden>${esc(g.explain)}</p><div class="hm-scroll"><table class="hm" role="grid" aria-label="${esc(g.title)} 히트맵" style="--cw:${CW}px">`;
+  html += `<thead><tr><th class="lab" scope="col">${B}칸 · ${binSize}분씩</th>${axisHtml(mk)}<th class="stath" scope="col">평균</th><th class="stath" scope="col">최고</th><th class="stath" scope="col">상태(임시)</th></tr></thead><tbody>`;
+  if (g.id === rowsFirstGroupId) {
+    html += `<tr class="mk"><th class="lab" scope="row">내가 표시한 구간</th>${mk.seg.map((s, b) => `<td class="c ${s ? 'seg-on' : ''}" ${s ? `title="${esc(s)}"` : ''} ${s ? 'role="gridcell"' : ''}></td>`).join('')}<td></td><td></td><td></td></tr>`;
+    html += `<tr class="mk"><th class="lab" scope="row">증상 메모 ◆</th>${mk.note.map((n, b) => `<td class="c ${n ? 'note-on' : ''}" ${n ? `title="${esc(n)}"` : ''}>${n ? '◆' : ''}</td>`).join('')}<td></td><td></td><td></td></tr>`;
+  }
+  rows.forEach((r, ri) => {
+    const rid = flatRows.length; flatRows.push(r);
+    const st = (P.stats || {})[r.key] || {};
+    const meanTxt = st.mean != null ? fmt(st.mean) : '-', maxTxt = st.max_peak != null ? fmt(st.max_peak) : fmt(r.mx);
+    html += `<tr class="${r.agg ? 'agg' : ''}"><th class="lab" scope="row" title="${esc(r.key)}">${esc(r.label)}</th>`;
+    for (let b = 0; b < B; b++) {
+      const v = r.vals[b];
+      if (isNaN(v)) { html += `<td class="c nd" data-r="${rid}" data-c="${b}" tabindex="-1" role="gridcell"></td>`; continue; }
+      const t = (state.scale === 'abs' && r.hasThr) ? r.abs[b] : r.rel[b];
+      // 무늬: 절대 기준에서는 '임시 기준(주의/높음)'이 있는 줄만, 상대 기준에서는 그 줄의 최고 근처(상위 10%)만
+      const useAbs = state.scale === 'abs' && r.hasThr;
+      const tex = useAbs ? (r.hasLevel ? (t >= 0.9 ? ' h' : (t >= 0.5 ? ' w' : '')) : '') : (state.scale === 'rel' && t >= 0.9 ? ' h' : '');
+      html += `<td class="c${tex}" data-r="${rid}" data-c="${b}" tabindex="-1" role="gridcell" style="background-color:${heat(t == null ? 0 : t)}"></td>`;
+    }
+    html += `<td class="st stat">${esc(meanTxt)}<span class="muted small"> ${esc(info(r.key).unit.length <= 4 ? info(r.key).unit : '')}</span></td><td class="st">${esc(maxTxt)}</td><td class="st">${readingChip(st.reading)}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  // 표로 보기 (색에 의존하지 않는 대체 수단)
+  html += `<details class="tabletoggle"><summary>표로 보기 (숫자 그대로)</summary><div class="datatbl"><table><thead><tr><th>시각</th>${rows.map(r => `<th>${esc(r.label)}</th>`).join('')}</tr></thead><tbody>`;
+  for (let b = 0; b < B; b++) { const [s] = binIdx(b); html += `<tr><td>${esc(clock(s))}</td>${rows.map(r => `<td>${isNaN(r.vals[b]) ? '-' : fmt(r.vals[b])}</td>`).join('')}</tr>`; }
+  html += `</tbody></table></div></details></div></details>`;
+  return html;
+}
+let rowsFirstGroupId = null;
+function strGroupHtml() {
+  const ks = Object.keys(strBin).filter(k => strBin[k].some(v => v));
+  if (!ks.length) return '';
+  let html = `<details class="group" open><summary><span>문자로 된 정보</span><span class="muted small" style="font-weight:400">${ks.length}줄</span><button type="button" class="explain-btn" data-ex="str" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-str" hidden>숫자가 아니라 이름·상태로 된 정보예요. 같은 색은 같은 값이에요. “GPU 성능 제한 사유”의 none/idle은 제한 없음, thermal·power가 들어가면 열이나 전력 때문에 성능을 낮췄다는 뜻이에요. 칸에 마우스나 방향키를 대면 이름이 나와요.</p><div class="hm-scroll"><table class="hm" role="grid" aria-label="문자 정보" style="--cw:${CW}px"><tbody>`;
+  let legend = '';
+  for (const k of ks) {
+    const rid = flatRows.length; const list = Object.entries(strBin[k].reduce((a, v) => { if (v) a[v] = (a[v] || 0) + 1; return a; }, {})).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+    flatRows.push({ key: k, label: labelOf(k), str: true, list });
+    html += `<tr><th class="lab" scope="row" title="${esc(k)}">${esc(labelOf(k))}</th>`;
+    for (let b = 0; b < B; b++) { const v = strBin[k][b]; html += v ? `<td class="c cat" data-r="${rid}" data-c="${b}" tabindex="-1" role="gridcell" style="background-color:${catColor(v, list)}"></td>` : `<td class="c nd" data-r="${rid}" data-c="${b}" tabindex="-1" role="gridcell"></td>`; }
+    html += `</tr>`;
+    legend += `<div class="catlegend"><b>${esc(labelOf(k))}:</b>${list.slice(0, 7).map(v => `<span><i style="background:${catColor(v, list)}"></i>${esc(v)}</span>`).join('')}${list.length > 7 ? '<span class="muted">…</span>' : ''}</div>`;
+  }
+  return html + `</tbody></table></div>${legend}</div></details>`;
+}
+function renderHeatmap() {
+  flatRows.length = 0; rampCache = null;
+  const mk = markerBins(); const rg = buildRows();
+  rowsFirstGroupId = (rg.find(x => x.rows.length) || { g: {} }).g.id;
+  $('#groups').innerHTML = rg.map(x => groupHtml(x, mk)).join('') + strGroupHtml();
+  renderLegend();
+  $$('#groups table.hm').forEach(t => { const first = $('td.c[data-r]', t); if (first) first.tabIndex = 0; });
+}
+function renderLegend() {
+  const stops = [0, .25, .5, .75, 1].map(t => heat(t)).join(',');
+  const abs = state.scale === 'abs';
+  $('#legend').innerHTML = `<span>${abs ? '정상' : '그 줄의 최소'}</span><span class="bar" style="background:linear-gradient(90deg,${stops})" role="img" aria-label="색이 진할수록 값이 큼"></span><span>${abs ? '높음 (임시 기준)' : '그 줄의 최대'}</span>${abs ? `<span><span class="sw" style="background-image:radial-gradient(circle,var(--tex) 1.1px,transparent 1.6px);background-size:5px 5px;background-color:${heat(.55)}"></span>점무늬 = 주의 (임시 기준)</span>` : ''}<span><span class="sw" style="background-image:repeating-linear-gradient(45deg,var(--tex) 0 2px,transparent 2px 5px);background-color:${heat(.95)}"></span>${abs ? '빗금 = 높음 (임시 기준)' : '빗금 = 그 줄에서 가장 높은 근처'}</span><span><span class="sw" style="background:var(--nodata)"></span>값 없음</span><span><span class="sw" style="background:var(--seg)"></span>내가 표시한 구간</span>` + (abs ? '' : '<span class="muted">※ 상대 기준에서는 진하다고 위험하다는 뜻은 아니에요.</span>');
+}
+
+/* ---------- 툴팁 / 키보드 ---------- */
+const tip = $('#tip');
+function cellInfo(td) {
+  const r = flatRows[+td.dataset.r], b = +td.dataset.c; if (!r) return null;
+  const [s, e] = binIdx(b); const tm = clock(s) + (e - s > 1 ? ' ~ ' + clock(e - 1).slice(6) : '');
+  const after = `부팅 후 ${minToLabel(mins[s])}`;
+  const ph = phases[s] ? ' · ' + phases[s].replace(/^segment:/, '구간: ') : '';
+  const mk = marks.slice(s, e).filter(Boolean).join(' / ');
+  if (r.str) { const v = strBin[r.key][b]; return { html: `<b>${esc(r.label)}</b><br>${v ? esc(v) : '값 없음'}<br><span style="opacity:.8">${esc(tm)}<br>${esc(after)}${esc(ph)}</span>`, text: `${r.label} ${v || '값 없음'} ${tm}` }; }
+  const v = r.vals[b], f = info(r.key); const t = (state.scale === 'abs' && r.hasThr) ? r.abs[b] : r.rel[b];
+  let lv = ''; if (f.warn != null && !isNaN(v)) { const ta = tAbs(r.key, v); lv = ta >= 0.9 ? '높음 (임시 기준)' : ta >= 0.5 ? '주의 (임시 기준)' : '정상 범위 (임시 기준)'; }
+  const val = isNaN(v) ? '값 없음' : fmt(v) + ' ' + (f.unit || '');
+  return { html: `<b>${esc(r.label)}</b><br><b>${esc(val)}</b>${lv ? ' · ' + esc(lv) : ''}<br><span style="opacity:.8">${esc(tm)}<br>${esc(after)}${esc(ph)}${mk ? '<br>마커: ' + esc(mk) : ''}</span>`, text: `${r.label} ${val} ${lv} ${tm}` };
+}
+function showTip(td, x, y) {
+  const c = cellInfo(td); if (!c) return; tip.innerHTML = c.html; tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight; let px = x + 14, py = y + 16;
+  if (px + w > innerWidth - 8) px = x - w - 14; if (py + h > innerHeight - 8) py = y - h - 14; tip.style.left = Math.max(8, px) + 'px'; tip.style.top = Math.max(8, py) + 'px';
+  $('#live').textContent = c.text;
+}
+document.addEventListener('mouseover', e => { const td = e.target.closest && e.target.closest('td.c[data-r]'); if (td) showTip(td, e.clientX, e.clientY); });
+document.addEventListener('mousemove', e => { if (tip.style.display === 'block') { const td = e.target.closest && e.target.closest('td.c[data-r]'); if (td) showTip(td, e.clientX, e.clientY); } });
+document.addEventListener('mouseout', e => { if (e.target.closest && e.target.closest('td.c')) tip.style.display = 'none'; });
+document.addEventListener('focusin', e => { const td = e.target.closest && e.target.closest('td.c[data-r]'); if (td) { const r = td.getBoundingClientRect(); showTip(td, r.left, r.bottom); } });
+document.addEventListener('focusout', e => { if (e.target.closest && e.target.closest('td.c')) tip.style.display = 'none'; });
+document.addEventListener('keydown', e => {
+  const td = e.target.closest && e.target.closest('td.c[data-r]'); if (!td) return;
+  const tr = td.parentElement; const cells = $$('td.c[data-r]', tr); const i = cells.indexOf(td); let nxt = null;
+  if (e.key === 'ArrowRight') nxt = cells[Math.min(cells.length - 1, i + 1)];
+  else if (e.key === 'ArrowLeft') nxt = cells[Math.max(0, i - 1)];
+  else if (e.key === 'Home') nxt = cells[0]; else if (e.key === 'End') nxt = cells[cells.length - 1];
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { let row = tr; do { row = e.key === 'ArrowDown' ? row.nextElementSibling : row.previousElementSibling; } while (row && !$('td.c[data-r]', row)); if (row) nxt = $$('td.c[data-r]', row)[i]; }
+  if (nxt) { e.preventDefault(); td.tabIndex = -1; nxt.tabIndex = 0; nxt.focus(); }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.explain-btn'); if (!b) return; e.preventDefault(); e.stopPropagation();
+  const p = document.getElementById('ex-' + b.dataset.ex); const open = p.hidden; p.hidden = !open; b.setAttribute('aria-expanded', String(open));
+});
+
+/* ---------- 한눈에 보기 ---------- */
+const SRC_LABELS = { cpu: 'CPU', memory: '메모리', disk: '디스크', network: '네트워크', gpu_counters: 'GPU 사용률', nvidia_smi: 'NVIDIA 상세', hw_sensors: '온도·팬 센서', processes: '프로세스' };
+function renderGlance() {
+  const hyps = P.hypotheses || [];
+  const sup = hyps.filter(h => h.evidence === 'supports');
+  const hi = (P.highlights || []);
+  const items = [];
+  hi.forEach(h => items.push(`<li><b>${esc(labelOf(h.metric))}</b> ${readingChip(h.reading)}<div class="muted small">상위 5% 값이 ${esc(fmt(h.p95))}${esc(h.unit || '')}, 기준을 넘은 시간 ${esc(h.minutes_over_warn)}분</div></li>`));
+  sup.slice(0, 8).forEach(h => items.push(`<li><b>${esc(h.hypothesis)}</b><div class="muted small">${esc(h.detail)}</div></li>`));
+  const c1 = `<div class="card"><h3>먼저 살펴볼 만한 곳</h3><p class="muted small">임시 기준으로 눈에 띈 항목이에요. 원인이 확정된 건 아니에요.</p>${items.length ? `<ul class="plain">${items.join('')}</ul>` : '<p>눈에 띄는 항목이 없어요.</p>'}</div>`;
+  const src = (P.data_quality || {}).sources_available || {};
+  const chips = Object.keys(SRC_LABELS).map(k => src[k] === false ? chip('c-none', 'none', SRC_LABELS[k] + ' 없음') : (src[k] ? chip('c-ok', 'ok', SRC_LABELS[k]) : '')).join(' ');
+  const c2 = `<div class="card"><h3>측정 상태</h3><p style="display:flex;flex-wrap:wrap;gap:6px">${chips}</p>${src.hw_sensors === false ? '<p class="small muted">CPU 온도와 케이스 팬은 센서 프로그램이 켜져 있어야 측정돼요. 지금은 비어 있어요.</p>' : ''}<p class="small muted">1분 평균으로 기록해서, 1분보다 짧은 순간은 “가장 높았던 순간”으로 바꿔서 봐야 보일 수 있어요.</p></div>`;
+  const dq = P.data_quality || {};
+  const c3 = `<div class="card"><h3>기록 정보</h3><dl class="kv"><dt>부팅 시각</dt><dd>${esc((P.boot || {}).boot_time || '')}</dd><dt>보는 구간</dt><dd>${esc(((P.boot || {}).window_start || '').replace('T', ' '))} ~ ${esc(((P.boot || {}).window_end || '').replace('T', ' '))}</dd><dt>기록한 분 수</dt><dd>${esc(dq.minute_rows)}분 (빠진 시간 약 ${esc(dq.missing_minutes_estimate || 0)}분)</dd><dt>표시한 구간</dt><dd>${(P.segments || []).length}개 · 메모 ${(P.notes || []).length}개</dd><dt>하드웨어</dt><dd>${esc(((P.hardware || {}).cpu || {}).name || '')}, RAM ${esc((P.hardware || {}).ram_gb)}GB</dd></dl></div>`;
+  $('#glance').innerHTML = c1 + c2 + c3;
+}
+
+/* ---------- 원인 후보 ---------- */
+const EV = { supports: ['c-sup', 'sup', '근거 있음'], against: ['c-ag', 'ag', '근거 없음'], no_data: ['c-none', 'none', '데이터 없음'] };
+function renderHyps() {
+  const list = (P.hypotheses || []).filter(h => state.filter === 'all' || h.evidence === state.filter);
+  const cats = [...new Set(list.map(h => h.category))];
+  $('#hyps').innerHTML = cats.length ? cats.map(c => `<div class="cat-h">${esc(c)}</div>` + list.filter(h => h.category === c).map(h => `<div class="hyp"><div>${chip(EV[h.evidence][0], EV[h.evidence][1], EV[h.evidence][2])}</div><div>${esc(h.hypothesis)}</div><div class="why">${esc(h.detail)}</div></div>`).join('')).join('') : '<p class="muted">해당하는 후보가 없어요.</p>';
+}
+
+/* ---------- 구간·메모 ---------- */
+const SEGKEYS = ['cpu.util', 'gpu.engine.3D', 'gpu.engine.VideoDecode', 'nv.gpu0.temp_c', 'nv.gpu0.util', 'mem.commit_pct'];
+function renderSegs() {
+  const segs = P.segments || [], notes = P.notes || [];
+  if (!segs.length && !notes.length) { $('#segs').innerHTML = '<p class="muted">아직 표시한 구간이나 메모가 없어요. AI가 “OO 프로그램을 켜 보세요”라고 하면 <code>Mark.ps1 start "이름"</code>, 끝나면 <code>Mark.ps1 end</code>, 증상이 보이는 순간엔 <code>Mark.ps1 note "무엇이 보였는지"</code>를 실행하세요. 여기에 그 전후의 변화가 비교돼서 나와요.</p>'; return; }
+  const cmp = st => { if (!st || !st.metrics) return '<span class="muted">원본이 보관 기간을 지나 비교할 수 없어요</span>'; return SEGKEYS.filter(k => st.metrics[k]).map(k => { const m = st.metrics[k]; const d = m.delta_vs_baseline; const cls = d > 0 ? 'up' : (d < 0 ? 'down' : ''); return `<div>${esc(labelOf(k))}: <b>${esc(fmt(m.mean))}</b> <span class="${cls}">(${d > 0 ? '▲ +' : (d < 0 ? '▼ ' : '')}${esc(fmt(d))})</span></div>`; }).join(''); };
+  let html = '';
+  if (segs.length) html += `<h3>구간</h3><div class="hm-scroll"><table class="plain"><thead><tr><th>이름</th><th>시간</th><th>평균 (기준선 대비)</th><th>구간 중 새로 시작된 프로그램</th></tr></thead><tbody>${segs.map(s => `<tr><td><b>${esc(s.label)}</b></td><td>${esc((s.start || '').replace('T', ' ').slice(5, 16))} · ${esc(s.duration_min)}분</td><td>${cmp(s.stats)}</td><td>${(s.processes_started_during || []).map(p => esc(p.process)).join(', ') || '<span class="muted">없음</span>'}</td></tr>`).join('')}</tbody></table></div><p class="muted small">기준선: ${esc((segs[0] || {}).comparison_baseline || '')}. ▲▼는 기준선보다 높거나 낮았다는 뜻일 뿐, 좋고 나쁨이 아니에요.</p>`;
+  if (notes.length) html += `<h3 style="margin-top:16px">증상 메모 (전후 5분 비교)</h3><div class="hm-scroll"><table class="plain"><thead><tr><th>메모</th><th>시각</th><th>메모 직전 5분</th><th>메모 직후 5분</th></tr></thead><tbody>${notes.map(n => `<tr><td><b>${esc(n.label)}</b></td><td>${esc((n.time || '').replace('T', ' ').slice(5, 16))}</td><td>${cmp(n.five_min_before)}</td><td>${cmp(n.five_min_after)}</td></tr>`).join('')}</tbody></table></div>`;
+  $('#segs').innerHTML = html;
+}
+
+/* ---------- 시스템 정보 ---------- */
+function renderSys() {
+  const s = P.system; if (!s) { $('#sys').innerHTML = '<p class="muted">시스템 스냅샷 없이 만들어졌어요.</p>'; return; }
+  const d = s.display || {}; const ev = ((s.events_since_boot || {}).system || {}); const dev = s.devices_with_problems || [];
+  const adapters = (d.adapters || []).map(a => `<li>${esc(a.adapter)} <span class="muted small">${a.width ? esc(a.width + '×' + a.height + ' · ' + a.refresh_hz + 'Hz') : '화면 출력 없음'} · 드라이버 ${esc(a.driver_version)} (${esc(a.driver_date || '')})</span></li>`).join('');
+  $('#sys').innerHTML = `<div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div><h3>화면</h3><ul class="plain"><li>모니터: ${(d.monitors || []).map(m => esc(m.model)).join(', ') || '-'}</li>${adapters}<li class="muted small">배율 DPI ${esc(d.dpi_applied)} · 하드웨어 가속 스케줄링 ${d.hardware_gpu_scheduling === 1 ? '켜짐' : (d.hardware_gpu_scheduling === 2 ? '꺼짐' : '기본')}</li>${(d.virtual_or_remote_adapters || []).length ? `<li>${chip('c-warn', 'warn', '가상/원격 어댑터')} ${esc(d.virtual_or_remote_adapters.join(', '))}</li>` : ''}</ul></div>
+  <div><h3>이번 부팅의 경고·오류 (${esc(ev.total || 0)}건)</h3><ul class="plain">${(ev.groups || []).slice(0, 8).map(g => `<li>${esc(g.provider)} #${esc(g.event_id)} <span class="chip c-none">${esc(g.occurrences)}번</span><div class="muted small">${esc(g.first.replace('T', ' ').slice(5, 16))} ~ ${esc(g.last.replace('T', ' ').slice(5, 16))}</div></li>`).join('') || '<li class="muted">없음</li>'}</ul></div>
+  <div><h3>문제가 보고된 장치</h3><ul class="plain">${dev.map(x => `<li>${esc(x.device)}<div class="muted small">코드 ${esc(x.error_code)} · ${esc(x.meaning)}</div></li>`).join('') || '<li class="muted">없음</li>'}</ul><h3 style="margin-top:14px">전원</h3><p class="small">전원 계획: ${esc((s.power || {}).active_plan || '-')} · 빠른 시작: ${(s.power || {}).fast_startup === 1 ? '켜짐' : '꺼짐'}</p></div></div><p class="muted small">${(s.notes || []).map(esc).join('<br>')}</p>`;
+}
+
+/* ---------- 복사 / 내려받기 ---------- */
+function aiText() {
+  const L = []; const hyps = P.hypotheses || [];
+  L.push('# PC 상태 기록 요약 (원인은 단정하지 않은 자료입니다)');
+  L.push('아래는 내 PC의 재부팅 이후 기록을 도구가 정리한 것입니다. 모든 기준값은 임시이며 이 PC의 정상 범위가 아닐 수 있습니다. 가능한 원인을 다각도로 나열하고, 각 가설을 데이터가 지지/반박하는지 구분해서 분석해 주세요. 더 필요한 데이터가 있으면 알려 주세요.');
+  L.push(''); L.push(`부팅: ${(P.boot || {}).boot_time} / 구간: ${(P.boot || {}).window_start} ~ ${(P.boot || {}).window_end} / 하드웨어: ${((P.hardware || {}).cpu || {}).name}, RAM ${(P.hardware || {}).ram_gb}GB`);
+  L.push(''); L.push('## 임시 기준을 넘은 지표'); (P.highlights || []).forEach(h => L.push(`- ${labelOf(h.metric)} (${h.metric}): p95=${h.p95}${h.unit || ''}, ${h.reading}, 기준 초과 ${h.minutes_over_warn}분`)); if (!(P.highlights || []).length) L.push('- 없음');
+  L.push(''); L.push('## 원인 후보 체크리스트 (supports=관측됨 / against=기준 미만 / no_data=측정 안 됨)'); hyps.forEach(h => L.push(`- [${h.evidence}] ${h.id} ${h.hypothesis} — ${h.detail}`));
+  L.push(''); L.push('## 온도-팬 분석'); (P.thermal || []).forEach(t => L.push('- ' + JSON.stringify(t))); if (!(P.thermal || []).length) L.push('- 없음(센서 없음 또는 온도 변화폭 부족)');
+  L.push(''); L.push('## 내가 표시한 구간/메모'); (P.segments || []).forEach(s => L.push(`- 구간 "${s.label}" ${s.start} ~ ${s.end}`)); (P.notes || []).forEach(n => L.push(`- 메모 "${n.label}" ${n.time}`)); if (!(P.segments || []).length && !(P.notes || []).length) L.push('- 없음');
+  L.push(''); L.push('※ 더 자세한 분 단위 데이터는 metrics_1min.csv, summary.json, schema.md를 함께 첨부하면 좋습니다.');
+  return L.join('\n');
+}
+async function copyText(t) { try { await navigator.clipboard.writeText(t); return true; } catch (e) { const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e2) {} ta.remove(); return ok; } }
+$('#btn-copy').addEventListener('click', async e => { const b = e.currentTarget; const ok = await copyText(aiText()); const old = b.textContent; b.textContent = ok ? '복사했어요! AI 채팅에 붙여 넣으세요' : '복사하지 못했어요 (브라우저 권한 확인)'; $('#live').textContent = b.textContent; setTimeout(() => b.textContent = old, 3500); });
+$('#btn-csv').addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([P.csv], { type: 'text/csv;charset=utf-8' })); a.download = 'metrics_1min.csv'; document.body.appendChild(a); a.click(); a.remove(); });
+
+/* ---------- 테마 / 토글 ---------- */
+function applyTheme(t) { if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); rampCache = null; }
+applyTheme(store.get('pcc.theme', ''));
+$('#btn-theme').addEventListener('click', () => { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); const nx = cur === 'dark' ? 'light' : 'dark'; store.set('pcc.theme', nx); applyTheme(nx); renderHeatmap(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { rampCache = null; renderHeatmap(); });
+function bindSeg(attr, key) { $$(`[data-${attr}]`).forEach(b => { b.setAttribute('aria-pressed', String(b.dataset[attr] === state[key])); b.addEventListener('click', () => { state[key] = b.dataset[attr]; store.set('pcc.' + key, state[key]); $$(`[data-${attr}]`).forEach(x => x.setAttribute('aria-pressed', String(x.dataset[attr] === state[key]))); renderHeatmap(); }); }); }
+bindSeg('scale', 'scale'); bindSeg('value', 'value'); bindSeg('sort', 'sort');
+$$('[data-f]').forEach(b => b.addEventListener('click', () => { state.filter = b.dataset.f; $$('[data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderHyps(); }));
+
+/* ---------- 시작 ---------- */
+(function init() {
+  const b = P.boot || {};
+  $('#subtitle').textContent = `부팅 ${String(b.boot_time || '').replace('T', ' ')} · 기록 ${N}분 · ${esc(((P.hardware || {}).os || {}).caption || '')}`;
+  const gen = Date.parse(P.generated_at), last = Date.parse(b.window_end);
+  if (gen && last && (gen - last) > 15 * 60000) $('#stale').innerHTML = `<div class="banner stale" role="status">마지막 기록이 ${minToLabel((gen - last) / 60000)} 전이에요. 수집기가 멈춰 있었을 수 있어서, 지금 상태가 아니라 <b>그때까지의 기록</b>이에요.</div>`;
+  if (N === 0) { $('#groups').innerHTML = '<p>기록이 없어요.</p>'; return; }
+  renderGlance(); renderHeatmap(); renderHyps(); renderSegs(); renderSys();
+  $('#foot').innerHTML = `<p>이 화면은 <code>${esc(P.tool_version || '')}</code> 도구가 ${esc(String(P.generated_at || '').replace('T', ' '))}에 만들었어요. 파일 경로·창 제목·계정·IP·MAC·시리얼 번호는 수집하지 않아요(저장소 README 참고). 이 파일은 인터넷 연결 없이 열려요.</p>`;
+})();
+</script>
+</body>
+</html>

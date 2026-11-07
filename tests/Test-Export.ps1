@@ -10,41 +10,9 @@
 #>
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ('pcc_synth_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-$boot = [datetime]'2026-11-01T09:00:00'
-$bootDir = Join-Path $tmp ('boot_' + $boot.ToString('yyyyMMdd_HHmmss'))
-New-Item -ItemType Directory -Path $bootDir -Force | Out-Null
-
-function Clamp($x, $lo, $hi) { [math]::Max($lo, [math]::Min($hi, $x)) }
-function TempAt($i) { if ($i -lt 20) { 40 } elseif ($i -lt 40) { 40 + 45 * ($i - 20) / 19 } elseif ($i -lt 55) { 85 - 40 * ($i - 39) / 16 } else { 45 } }
-function FanBase($i) { # 팬 목표(0..1): 온도를 4분 늦게 따라가고, 70분까지 높게 유지
-  $j = $i - 4; if ($j -lt 20) { return 0.0 }
-  if ($j -lt 40) { return (Clamp (($j - 19) / 20.0) 0 1) }
-  if ($i -lt 70) { return 1.0 }
-  Clamp (1.0 - ($i - 69) / 10.0) 0 1
-}
-$lines = New-Object Collections.Generic.List[string]
-for ($i = 0; $i -lt 90; $i++) {
-  $t = $boot.AddMinutes($i)
-  $temp = TempAt $i; $fb = FanBase $i
-  $m = [ordered]@{}
-  $m['cpu.util'] = @((10 + 70 * [double]($i -ge 20 -and $i -lt 40)), 95, 95)
-  $m['mem.commit_pct'] = @(55, 56, 56)
-  $m['hw.temp_c.CPU_Package'] = @([math]::Round($temp, 1), [math]::Round($temp + 1, 1), [math]::Round($temp + 1, 1))
-  $m['hw.fan_rpm.CPU_Fan'] = @([math]::Round(800 + 1000 * $fb), 1850, 1850)
-  foreach ($n in 1, 2, 4) { $m["hw.fan_rpm.Case_Fan_$n"] = @([math]::Round(800 + 1000 * $fb), 1850, 1850) }
-  $m['hw.fan_rpm.Case_Fan_3'] = @([math]::Round(800 + 400 * $fb), 1250, 1250)
-  $m['nv.gpu0.temp_c'] = @(45, 46, 46); $m['nv.gpu0.fan_pct'] = @(0, 0, 0)
-  $phase = if ($i -lt 5) { 'boot_settle' } elseif ($i -ge 20 -and $i -lt 40) { 'segment:game' } elseif ($i -lt 30) { 'baseline' } else { 'normal' }
-  $lines.Add(([ordered]@{ t = $t.ToString('s'); n = 12; phase = $phase; m = $m; s = [ordered]@{ 'proc.top_cpu' = 'game' } } | ConvertTo-Json -Depth 5 -Compress))
-}
-[IO.File]::WriteAllLines((Join-Path $bootDir 'minute.jsonl'), $lines, (New-Object Text.UTF8Encoding $false))
-$meta = [ordered]@{ collector_version = 'synthetic'; boot_time = $boot.ToString('s'); os = @{ caption = 'Synthetic' }; cpu = @{ name = 'Synthetic CPU'; logical = 8 }; ram_gb = 16; gpus = @(); plan = @{ note = 'synthetic' } }
-[IO.File]::WriteAllText((Join-Path $bootDir 'meta.json'), ($meta | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
-$mk = @(
-  ([ordered]@{ t = $boot.AddMinutes(20).ToString('s'); type = 'segment_start'; label = 'game' } | ConvertTo-Json -Compress),
-  ([ordered]@{ t = $boot.AddMinutes(40).ToString('s'); type = 'segment_end'; label = 'game'; duration_sec = 1200 } | ConvertTo-Json -Compress))
-[IO.File]::WriteAllLines((Join-Path $bootDir 'markers.jsonl'), $mk, (New-Object Text.UTF8Encoding $false))
+. (Join-Path $PSScriptRoot 'SyntheticBoot.ps1')
+$syn = New-SyntheticBoot
+$tmp = $syn.DataDir
 
 $out = Join-Path $tmp 'out'
 & (Join-Path $root 'src\Export-Data.ps1') -DataDir $tmp -OutDir $out -NoSnapshot | Out-Null
@@ -81,6 +49,16 @@ Check '후보 T4(팬 비정상) = no_data(판단 보류)' ($h['T4'] -eq 'no_data
 Check '구간 1개 인식' (@($sum.segments).Count -eq 1)
 Check 'schema.md 생성' (Test-Path (Join-Path $out 'schema.md'))
 Check 'summary: 임시 기준 안내문 존재' ($sum.read_me_first -match '임시')
+
+& (Join-Path $root 'src\Build-Dashboard.ps1') -ExportDir $out | Out-Null
+$htmlPath = Join-Path $out 'dashboard.html'
+Check '대시보드: dashboard.html 생성' (Test-Path $htmlPath)
+if (Test-Path $htmlPath) {
+  $html = [IO.File]::ReadAllText($htmlPath, [Text.Encoding]::UTF8)
+  Check '대시보드: 데이터 삽입됨(자리표시자 없음)' (-not ($html -match '__PAYLOAD__') -and $html.Length -gt 50000) "len=$($html.Length)"
+  Check '대시보드: 외부 주소/CDN/웹폰트 없음(오프라인)' (-not ($html -match '(?i)(src|href)\s*=\s*["'']?https?://|@import|url\(\s*["'']?https?:|<link[^>]+stylesheet'))
+  Check '대시보드: 팬 통합 줄 데이터 포함' ($html -match 'fan_group\.case\.mean_pct')
+}
 
 Remove-Item $tmp -Recurse -Force
 if ($script:fail -gt 0) { Write-Host "`n$($script:fail)개 실패" -ForegroundColor Red; exit 1 } else { Write-Host "`n모두 통과" -ForegroundColor Green }
