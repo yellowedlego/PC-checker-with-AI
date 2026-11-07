@@ -1,0 +1,27 @@
+# 수집된 데이터/보고서/로그는 개인 PC 정보이므로 절대 커밋하지 않는다
+data/
+logs/
+report_*/
+out/
+*.jsonl
+*.csv
+*.log
+*.dmp
+pending_marker.txt
+stop.flag
+state.json
+
+# 옛 실험 스크립트 (저장소에 포함하지 않음)
+legacy/
+
+# 사용자별 설정/비밀 (API 키 등)
+*.secret
+*.key
+secrets/
+config.local.json
+
+# OS/에디터
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
