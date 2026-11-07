@@ -8,7 +8,7 @@
     40~89분  식는 중    CPU 85→45°C (55분까지), 그런데 팬은 70분까지 1800 RPM 유지 후 하락  => '온도 낮은데 팬 높음' 구간
     Case_Fan_3 은 다른 팬보다 낮게(1200 RPM) 돈다.
 #>
-function New-SyntheticBoot([string]$Root) {
+function New-SyntheticBoot([string]$Root, [int]$Minutes = 90) {
   if (-not $Root) { $Root = Join-Path ([IO.Path]::GetTempPath()) ('pcc_synth_' + [guid]::NewGuid().ToString('N').Substring(0, 8)) }
   $boot = [datetime]'2026-11-01T09:00:00'
   $bootDir = Join-Path $Root ('boot_' + $boot.ToString('yyyyMMdd_HHmmss'))
@@ -18,7 +18,7 @@ function New-SyntheticBoot([string]$Root) {
   $fanBase = { param($i) $j = $i - 4; if ($j -lt 20) { return 0.0 }; if ($j -lt 40) { return (& $clamp (($j - 19) / 20.0) 0 1) }; if ($i -lt 70) { return 1.0 }; & $clamp (1.0 - ($i - 69) / 10.0) 0 1 }
   $rnd = New-Object Random 7
   $lines = New-Object Collections.Generic.List[string]
-  for ($i = 0; $i -lt 90; $i++) {
+  for ($i = 0; $i -lt $Minutes; $i++) {
     $t = $boot.AddMinutes($i)
     $temp = & $tempAt $i; $fb = & $fanBase $i; $load = [double]($i -ge 20 -and $i -lt 40)
     $m = [ordered]@{}

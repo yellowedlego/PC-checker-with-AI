@@ -212,7 +212,9 @@ function Get-SeriesSummary([string]$Key) {
     unit = $info.unit; description = $info.description
     minutes_with_data = $f.Count
     min = Rn $sorted[0]; mean = Rn $mean; median = Rn $med; p95 = Rn $p95; max_of_minute_avg = Rn $maxAvg; max_peak_in_any_minute = Rn $peakMax; max_at = $maxAt
-    reading_by_p95 = Get-Reading $info $p95
+    p5 = Rn (Get-Percentile $sorted 0.05)
+    reading_basis = $(if ($info.direction -eq 'low') { 'p5' } else { 'p95' })
+    reading_by_p95 = Get-Reading $info $(if ($info.direction -eq 'low') { Get-Percentile $sorted 0.05 } else { $p95 })
     provisional_thresholds = $(if ($null -ne $info.warn) { [ordered]@{ direction = $info.direction; warn = $info.warn; hot = $info.hot } } else { $null })
     minutes_over_warn = $overWarn; minutes_over_hot = $overHot
     trend_slope_per_min = Rn $slope 4
@@ -592,7 +594,7 @@ foreach ($k in $strCols) { $i = Get-MetricInfo $k; L "| ``$k`` | | $($i.descript
 L
 L '## summary.json 구조'
 L
-L '- `metrics.<열 이름>`: `min / mean / median / p95 / max_of_minute_avg / max_peak_in_any_minute / max_at`, `reading_by_p95`(임시 기준 한 줄 해석), `minutes_over_warn / hot`, `trend_slope_per_min`(전체 추세, 단위/분), `steepest_rise_per_min / steepest_fall_per_min`(3분 창 기준 가장 가파른 변화), `skew`(평균-중앙값, p95/중앙값), `spike_count / spikes_top5`(중앙값+3·MAD 초과 순간).'
+L '- `metrics.<열 이름>`: `min / mean / median / p95 / max_of_minute_avg / max_peak_in_any_minute / max_at`, `reading_by_p95`(임시 기준 한 줄 해석. 낮을수록 나쁜 지표(남은 메모리)는 하위 5% 값 `p5` 기준이며 `reading_basis`에 p95/p5가 적힘), `minutes_over_warn / hot`, `trend_slope_per_min`(전체 추세, 단위/분), `steepest_rise_per_min / steepest_fall_per_min`(3분 창 기준 가장 가파른 변화), `skew`(평균-중앙값, p95/중앙값), `spike_count / spikes_top5`(중앙값+3·MAD 초과 순간).'
 L '- `thermal_fan_analysis`: 온도 정점, 10도 식는 데 걸린 시간, **온도는 낮은데 팬은 높은 분 수**, 팬이 온도를 몇 분 늦게 따라가는지(상관이 가장 큰 지연).'
 L '- `segments / notes`: 사용자가 표시한 구간·메모 전후의 원본 틱 기준 평균/최대와 기준선 대비 변화, 구간 중 시작된 프로세스.'
 L '- `hypotheses`: 가능한 원인 후보 체크리스트. `evidence` 는 `supports`(임시 기준 이상으로 관측됨) / `against`(측정했고 기준 미만) / `no_data`(수집하지 않았거나 부족) 중 하나이며 **결론이 아닙니다.**'

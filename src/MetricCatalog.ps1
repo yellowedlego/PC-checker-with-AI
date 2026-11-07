@@ -71,3 +71,36 @@ function Get-Reading($Info, $Value) {
   if ($Value -le $Info.warn) { return '주의 (임시 기준)' }
   '정상 범위 (임시 기준)'
 }
+
+# 절대 기준 점수 t (0..1): 0.5 = 주의 기준(warn), 0.9 이상 = 높음 기준(hot) 근처. 기준이 없으면 $null
+function Get-AbsT($Info, [double]$v) {
+  if ($null -eq $Info.warn) { if ($Info.unit -eq '%' -and $Info.scale -eq 'absolute') { return [math]::Min(1.0, $v / 100) } else { return $null } }
+  if ($Info.direction -eq 'high') {
+    if ($v -ge $Info.hot) { return 1.0 }
+    if ($v -ge $Info.warn) { return 0.5 + 0.4 * ($v - $Info.warn) / ([math]::Max(1e-9, $Info.hot - $Info.warn)) }
+    return [math]::Max(0.0, 0.5 * $v / [math]::Max(1e-9, $Info.warn))
+  }
+  if ($v -le $Info.hot) { return 1.0 }
+  if ($v -le $Info.warn) { return 0.5 + 0.4 * ($Info.warn - $v) / ([math]::Max(1e-9, $Info.warn - $Info.hot)) }
+  [math]::Max(0.0, 0.5 * (1 - ($v - $Info.warn) / ($Info.warn * 4)))
+}
+
+# 지표 키 -> 사람이 읽는 한국어 이름 (대시보드의 라벨과 같은 규칙)
+function Get-MetricLabel([string]$Key) {
+  $rules = @(
+    @('^cpu\.util$', 'CPU 사용률'), @('^cpu\.perf_pct$', 'CPU 클럭 비율'), @('^cpu\.dpc$', '드라이버 처리(DPC)'), @('^cpu\.interrupt$', '하드웨어 인터럽트'),
+    @('^cpu\.core_max$', '가장 바쁜 코어'), @('^cpu\.core_over90_count$', '90% 넘은 코어 수'),
+    @('^mem\.avail_mb$', '남은 메모리'), @('^mem\.commit_pct$', '메모리 약속량(커밋)'), @('^mem\.pages_per_sec$', '메모리 페이징'),
+    @('^disk\.(.+)\.busy$', '디스크 $1 사용 시간'), @('^disk\.(.+)\.queue$', '디스크 $1 대기열'), @('^disk\.(.+)\.latency_ms$', '디스크 $1 응답 시간'),
+    @('^gpu\.engine\.(.+)$', 'GPU $1 엔진'), @('^gpu\.vram_used_mb$', 'GPU 전용 메모리'),
+    @('^nv\.gpu\d+\.temp_c$', 'GPU 온도'), @('^nv\.gpu\d+\.util$', 'GPU 사용률'), @('^nv\.gpu\d+\.fan_pct$', 'GPU 팬 속도'), @('^nv\.gpu\d+\.sm_mhz$', 'GPU 코어 클럭'),
+    @('^nv\.gpu\d+\.dec_util$', 'GPU 디코더(영상 재생)'), @('^nv\.gpu\d+\.power_w$', 'GPU 전력'),
+    @('^hw\.temp_c\.(.+)$', '온도 $1'), @('^fan_pct\.(.+)$', '팬 $1'),
+    @('^fan_group\.case\.mean_pct$', '케이스 팬 통합(평균)'), @('^fan_group\.case\.max_pct$', '케이스 팬 통합(최고)'),
+    @('^fan_group\.cpu\.mean_pct$', 'CPU 팬 통합(평균)'), @('^fan_group\.cpu\.max_pct$', 'CPU 팬 통합(최고)'),
+    @('^fan_group\.gpu\.mean_pct$', 'GPU 팬 통합(평균)'), @('^fan_group\.gpu\.max_pct$', 'GPU 팬 통합(최고)'),
+    @('^proc\.top_cpu_core_pct$', 'CPU 1위 프로세스 사용률'), @('^proc\.count$', '프로세스 수')
+  )
+  foreach ($r in $rules) { if ($Key -match $r[0]) { return ([regex]::Replace($Key, $r[0], $r[1])).Replace('_', ' ') } }
+  $Key
+}
