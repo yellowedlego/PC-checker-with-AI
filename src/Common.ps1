@@ -8,11 +8,15 @@ function Get-DefaultDataDir {
 }
 
 # 텍스트에서 사용자 이름/컴퓨터 이름을 지운다. 이벤트 메시지 등 자유 텍스트를 저장하기 전에 반드시 통과시킨다.
-function Protect-Text([string]$Text) {
+# -PatternsOnly: 프로세스 이름/제조사/설명처럼 계정명이 들어갈 일이 없는 필드용. 이름 치환은 건너뛰고 경로/이메일/IP/MAC 형태만 지운다.
+# 이름 치환은 '단어 경계'에서만 한다 (예: 사용자 이름이 User 일 때 RtkAudUService64 같은 이름은 건드리지 않음).
+function Protect-Text([string]$Text, [switch]$PatternsOnly) {
   if ([string]::IsNullOrEmpty($Text)) { return $Text }
   $t = $Text
-  foreach ($pair in @(@($env:USERNAME, '<USER>'), @($env:COMPUTERNAME, '<PC>'))) {
-    if ($pair[0] -and $pair[0].Length -ge 2) { $t = [regex]::Replace($t, [regex]::Escape($pair[0]), $pair[1], 'IgnoreCase') }
+  if (-not $PatternsOnly) {
+    foreach ($pair in @(@($env:USERNAME, '<USER>'), @($env:COMPUTERNAME, '<PC>'))) {
+      if ($pair[0] -and $pair[0].Length -ge 2) { $t = [regex]::Replace($t, '(?<![A-Za-z0-9])' + [regex]::Escape($pair[0]) + '(?![A-Za-z0-9])', $pair[1], 'IgnoreCase') }
+    }
   }
   # 사용자 폴더 경로, 이메일, IPv4, MAC 형태는 값 자체를 지운다
   $t = [regex]::Replace($t, '(?i)[a-z]:\\users\\[^\\\s"'']+', 'C:\Users\<USER>')

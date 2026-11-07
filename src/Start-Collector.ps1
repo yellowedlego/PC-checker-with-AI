@@ -86,6 +86,7 @@ $script:vendor = @{}
 $script:hwNs = $null; $script:hwSkip = 0
 $script:src = [ordered]@{}
 $script:ticks = 0
+$script:selfCpu = 0.0; $script:selfWall = $null
 $script:lastBeat = [datetime]::MinValue
 $script:lastClean = Get-Date
 
@@ -95,8 +96,8 @@ function Get-VendorInfo([int]$ProcId, [string]$Name) {
   if ($script:vendor.Count -lt 600) {
     try {
       $fvi = [Diagnostics.Process]::GetProcessById($ProcId).MainModule.FileVersionInfo
-      $info.company = Protect-Text $fvi.CompanyName
-      $info.description = Protect-Text $fvi.FileDescription
+      $info.company = Protect-Text $fvi.CompanyName -PatternsOnly
+      $info.description = Protect-Text $fvi.FileDescription -PatternsOnly
     } catch { }
   }
   $script:vendor[$Name] = $info
@@ -243,6 +244,16 @@ function Get-Tick([bool]$First) {
   $script:src.processes = ($pr.Count -gt 0)
   $now = Get-Date
   Update-Procs $pr $now $First
+  # 이 수집기 자신의 부하 (측정이 시스템에 주는 영향을 구분하기 위함)
+  # 자기 CPU는 WMI 카운터 대신 프로세스 CPU 시간의 차이로 직접 계산한다 (자기 자신에겐 WMI 값이 0으로 나옴)
+  $selfProc = [Diagnostics.Process]::GetCurrentProcess()
+  $cpuSec = $selfProc.TotalProcessorTime.TotalSeconds; $wall = Get-Date
+  if ($script:selfWall) { $dt = ($wall - $script:selfWall).TotalSeconds; if ($dt -gt 0.5) { $m['collector.cpu_core_pct'] = Rn (100 * ($cpuSec - $script:selfCpu) / $dt) 1 } }
+  $script:selfCpu = $cpuSec; $script:selfWall = $wall
+  $m['collector.ram_mb'] = Rn ($selfProc.WorkingSet64 / 1MB) 0
+  # WMI 제공자(WmiPrvSE) 전체 부하: 이 수집기의 조회가 대부분이지만 다른 프로그램의 WMI 조회도 섞임
+  $wmiHost = @($pr | Where-Object { $_.Name -like 'WmiPrvSE*' })
+  if ($wmiHost.Count -gt 0) { $m['collector.wmi_host_cpu_core_pct'] = Rn (($wmiHost | Measure-Object PercentProcessorTime -Sum).Sum) 0 }
   $real = @($pr | Where-Object { $_.Name -notin '_Total', 'Idle' })
   $m['proc.count'] = $real.Count
   $top = $real | Sort-Object PercentProcessorTime -Descending | Select-Object -First 1
