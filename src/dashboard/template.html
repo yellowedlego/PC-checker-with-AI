@@ -744,7 +744,7 @@ $$('[data-f]').forEach(b => b.addEventListener('click', () => { state.filter = b
   if (gen && last && (gen - last) > 15 * 60000) $('#stale').innerHTML = `<div class="banner stale" role="status">마지막 기록이 ${minToLabel((gen - last) / 60000)} 전이에요. 수집기가 멈춰 있었을 수 있어서, 지금 상태가 아니라 <b>그때까지의 기록</b>이에요.</div>`;
   if (N === 0) { $('#groups').innerHTML = '<p>기록이 없어요.</p>'; return; }
   renderGlance(); renderHeatmap(); renderHyps(); renderReqs(); renderSegs(); renderSys();
-  $('#foot').innerHTML = `<p>이 화면은 <code>${esc(P.tool_version || '')}</code> 도구가 ${esc(String(P.generated_at || '').replace('T', ' '))}에 만들었어요. 파일 경로·창 제목·계정·IP·MAC·시리얼 번호는 수집하지 않아요(저장소 README 참고). 이 파일은 인터넷 연결 없이 열려요.</p>`;
+  $('#foot').innerHTML = `<p>이 화면은 <code>${esc(P.tool_version || '')}</code> 도구가 ${esc(String(P.generated_at || '').replace('T', ' '))}에 만들었어요. 파일 경로·창 제목·계정·IP·MAC·시리얼 번호는 읽지 않아요. 다만 프로세스 이름과 하드웨어 모델명은 들어 있어요(저장소 README의 “데이터와 개인정보” 참고). 이 파일은 인터넷 연결 없이 열리고, 어디로도 전송하지 않아요.</p>`;
 })();
 </script>
 </body>

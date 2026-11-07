@@ -1,5 +1,5 @@
 ﻿# 공통 함수 (수집 엔진/마커/이후 단계에서 공유)
-# 원칙: 사람이나 그 사람의 활동 내용을 알 수 있는 값은 수집하지 않는다. (README '수집하지 않는 것' 참고)
+# 원칙: 사람이나 그 사람의 활동 내용을 알 수 있는 값은 수집하지 않는다. (README '데이터와 개인정보' 참고)
 
 $script:Inv = [Globalization.CultureInfo]::InvariantCulture
 

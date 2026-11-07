@@ -616,7 +616,7 @@ L '`summary.json`의 `ai_protocol`(규칙)과 `data_requests`(요청 목록: R1~
 L
 L '## 개인정보'
 L
-L '수집하지 않는 것의 기준과 목록은 저장소의 README를 보세요. 이 폴더의 파일에는 파일 경로, 명령줄 인자, 창 제목, 계정, IP/MAC, 시리얼 번호가 없습니다.'
+L '무엇이 어디에 저장되고 밖으로 나갈 수 있는지는 저장소 README의 "데이터와 개인정보"를 보세요. 이 폴더의 파일에는 파일 경로, 명령줄 인자, 창 제목, 계정, IP/MAC, 시리얼 번호가 없습니다. 다만 **프로세스 이름과 하드웨어 모델명은 들어 있으니** 공유하기 전에 확인하세요.'
 [IO.File]::WriteAllText((Join-Path $OutDir 'schema.md'), $md.ToString(), (New-Object Text.UTF8Encoding $false))
 
 Write-Host "[export] 완료: $OutDir" -ForegroundColor Green
