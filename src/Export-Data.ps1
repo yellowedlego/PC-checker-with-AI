@@ -25,6 +25,7 @@ $ToolVersion = '0.2.0'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'MetricCatalog.ps1')
 . (Join-Path $PSScriptRoot 'Get-Snapshot.ps1')
+. (Join-Path $PSScriptRoot 'RequestCatalog.ps1')
 $inv = [Globalization.CultureInfo]::InvariantCulture
 if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
 
@@ -544,6 +545,15 @@ $summary['notes'] = $noteOut
 $summary['processes_top'] = @($procSummary | Select-Object -First 10 | ForEach-Object { [ordered]@{ name = $_.name; company = $_.company; peak_cpu_core_pct = $_.peak_cpu_core_pct; peak_ram_mb = $_.peak_ram_mb; started_after_collector = $_.started_after_collector } })
 $summary['system'] = $snapshot
 $summary['hypotheses'] = $H.ToArray()
+# AI가 분석 중 새 자료가 필요할 때 사용자에게 요청할 수 있는 '미리 정해 둔 명령' 목록과 규칙
+$reqList = New-Object Collections.Generic.List[object]
+foreach ($r in $script:AiRequests) {
+  $o = [ordered]@{ id = $r.id; kind = $r.kind; title = $r.title; when = $r.when; minutes = $r.minutes; collects = $r.collects }
+  if ($r.kind -eq 'probe') { $o['command'] = Get-AiRequestCommand $r } else { $o['steps'] = $r.steps }
+  $reqList.Add($o)
+}
+$summary['ai_protocol'] = $script:AiProtocol
+$summary['data_requests'] = $reqList.ToArray()
 Write-JsonFile (Join-Path $OutDir 'summary.json') $summary
 
 # ---------------- schema.md ----------------
@@ -599,6 +609,10 @@ L '- `thermal_fan_analysis`: 온도 정점, 10도 식는 데 걸린 시간, **�
 L '- `segments / notes`: 사용자가 표시한 구간·메모 전후의 원본 틱 기준 평균/최대와 기준선 대비 변화, 구간 중 시작된 프로세스.'
 L '- `hypotheses`: 가능한 원인 후보 체크리스트. `evidence` 는 `supports`(임시 기준 이상으로 관측됨) / `against`(측정했고 기준 미만) / `no_data`(수집하지 않았거나 부족) 중 하나이며 **결론이 아닙니다.**'
 L '- `system`: 부팅 이후 이벤트 요약, 디스플레이 설정, 문제 장치, 전원 계획 등 스냅샷. 계정/경로/IP/MAC/시리얼은 포함하지 않으며 이름은 `<USER>`, `<PC>`로 가려집니다.'
+L
+L '## AI가 추가 자료를 요청하는 방법'
+L
+L '`summary.json`의 `ai_protocol`(규칙)과 `data_requests`(요청 목록: R1~R12 확인 명령, S1~S4 재현·표시 순서)를 보세요. AI는 **이 목록에 있는 번호와 명령만** 요청하고, 사용자가 명령을 실행해 나온 글을 그대로 붙여 넣습니다. 확인 명령(R)은 읽기 전용이고 결과는 개인정보를 가린 약 4KB 이내의 글입니다.'
 L
 L '## 개인정보'
 L

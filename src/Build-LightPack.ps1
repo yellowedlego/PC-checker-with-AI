@@ -15,12 +15,13 @@ param(
   [string]$ExportDir,
   [string]$DataDir,
   [string]$OutDir,
-  [int]$MaxSummaryBytes = 4600
+  [int]$MaxSummaryBytes = 6400   # 핵심 요약 약 4.5KB + 요청 목록 약 1.8KB
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'MetricCatalog.ps1')
 . (Join-Path $PSScriptRoot 'ChartKit.ps1')
+. (Join-Path $PSScriptRoot 'RequestCatalog.ps1')
 $inv = [Globalization.CultureInfo]::InvariantCulture
 $utf8 = New-Object Text.UTF8Encoding $false
 if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
@@ -240,6 +241,9 @@ function Build-Summary([int]$MaxItems, [int]$MaxRows, [int]$TextCols) {
   foreach ($r in $rm) { $cells = -join ($r.ts | ForEach-Object { Cell $_ }); $m = $r.metric; $L.Add("$(if ($r.relative) { '~' })$($r.label) $cells $(Fmt $m.mean)/$(Fmt $m.max_peak_in_any_minute)$(Unit $r.key)") }
   $L.Add('```')
   $L.Add('(줄 끝 숫자 = 평균/최고)')
+  $L.Add('')
+  $L.Add('## 더 필요한 자료는 이렇게 요청하세요 (AI용 규칙 + 요청 목록)')
+  $L.Add((Get-AiRequestText 'compact'))
   $L.Add('')
   $L.Add('## 같은 폴더의 그림 (모두 아래에 읽는 법 설명이 붙어 있음)')
   foreach ($r in $results) { $L.Add("- $($r.name): $($r.desc)") }

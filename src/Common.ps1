@@ -10,7 +10,8 @@ function Get-DefaultDataDir {
 # 텍스트에서 사용자 이름/컴퓨터 이름을 지운다. 이벤트 메시지 등 자유 텍스트를 저장하기 전에 반드시 통과시킨다.
 # -PatternsOnly: 프로세스 이름/제조사/설명처럼 계정명이 들어갈 일이 없는 필드용. 이름 치환은 건너뛰고 경로/이메일/IP/MAC 형태만 지운다.
 # 이름 치환은 '단어 경계'에서만 한다 (예: 사용자 이름이 User 일 때 RtkAudUService64 같은 이름은 건드리지 않음).
-function Protect-Text([string]$Text, [switch]$PatternsOnly) {
+# -NoIp: IPv4 형태 치환을 끈다 (드라이버 버전 4.6.5.0 같은 값이 <IP>로 가려지는 것을 막을 때. IP를 직접 출력하지 않는 곳에서만 쓴다)
+function Protect-Text([string]$Text, [switch]$PatternsOnly, [switch]$NoIp) {
   if ([string]::IsNullOrEmpty($Text)) { return $Text }
   $t = $Text
   if (-not $PatternsOnly) {
@@ -18,10 +19,16 @@ function Protect-Text([string]$Text, [switch]$PatternsOnly) {
       if ($pair[0] -and $pair[0].Length -ge 2) { $t = [regex]::Replace($t, '(?<![A-Za-z0-9])' + [regex]::Escape($pair[0]) + '(?![A-Za-z0-9])', $pair[1], 'IgnoreCase') }
     }
   }
+  if (-not $PatternsOnly) {   # 자유 텍스트(이벤트 본문·라벨)에서는 드라이브/장치 경로를 통째로 지운다 (README: 파일·폴더 경로는 수집하지 않음)
+    $t = [regex]::Replace($t, '(?i)([''"])[a-z]:\\.*?\1', '$1<경로>$1')   # 따옴표로 감싼 경로는 공백이 있어도 통째로
+    $t = [regex]::Replace($t, '(?i)\\\\\?\\[^\s"'']+', '<경로>')
+    $t = [regex]::Replace($t, '(?i)\\Device\\[^\s"'']+', '<경로>')
+    $t = [regex]::Replace($t, '(?i)\b[a-z]:\\\S*', '<경로>')               # 따옴표 없는 경로는 공백 전까지
+  }
   # 사용자 폴더 경로, 이메일, IPv4, MAC 형태는 값 자체를 지운다
   $t = [regex]::Replace($t, '(?i)[a-z]:\\users\\[^\\\s"'']+', 'C:\Users\<USER>')
   $t = [regex]::Replace($t, '[\w\.\-+]+@[\w\-]+\.[\w\.\-]+', '<EMAIL>')
-  $t = [regex]::Replace($t, '\b\d{1,3}(\.\d{1,3}){3}\b', '<IP>')
+  if (-not $NoIp) { $t = [regex]::Replace($t, '\b\d{1,3}(\.\d{1,3}){3}\b', '<IP>') }
   $t = [regex]::Replace($t, '\b([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b', '<MAC>')
   $t
 }

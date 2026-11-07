@@ -14,6 +14,7 @@ $ErrorActionPreference = 'Stop'
 $ToolVersion = '0.3.0'
 . (Join-Path $PSScriptRoot 'Common.ps1')
 . (Join-Path $PSScriptRoot 'MetricCatalog.ps1')
+. (Join-Path $PSScriptRoot 'RequestCatalog.ps1')
 if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
 if (-not $ExportDir) {
   $latest = Get-ChildItem (Join-Path $DataDir 'export') -Directory -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -50,12 +51,16 @@ if ($sum.system) {
     events_since_boot = [ordered]@{ system = $sum.system.events_since_boot.system }
   }
 }
+# AI 자료 요청 목록(확인 명령 R, 재현·표시 순서 S)과 규칙
+$reqs = New-Object Collections.Generic.List[object]
+foreach ($r in $script:AiRequests) { $o = [ordered]@{ id = $r.id; kind = $r.kind; title = $r.title; when = $r.when; minutes = $r.minutes; collects = $r.collects }; if ($r.kind -eq 'probe') { $o['command'] = Get-AiRequestCommand $r } else { $o['steps'] = $r.steps }; $reqs.Add($o) }
 $payload = [ordered]@{
   tool_version = $ToolVersion; generated_at = (Get-Date).ToString('s')
   boot = $sum.boot; hardware = $sum.hardware; data_quality = $sum.data_quality
   highlights = $sum.highlights_over_provisional_thresholds; hypotheses = $sum.hypotheses; thermal = $sum.thermal_fan_analysis
   segments = $sum.segments; notes = $sum.notes; system = $system
   stats = $stats; catalog = $catalog; strCols = $strCols; csv = $csvText
+  requests = $reqs.ToArray(); protocol = $script:AiProtocol; request_text_compact = (Get-AiRequestText 'compact')
 }
 $json = $payload | ConvertTo-Json -Depth 12 -Compress
 # <script> 안에서 안전하도록 '</' 와 줄 구분 문자를 이스케이프

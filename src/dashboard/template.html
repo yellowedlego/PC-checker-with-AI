@@ -126,6 +126,15 @@ td.c.note-on { background: var(--surface); color: var(--accent); text-align: cen
 .catlegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; margin: 6px 0 0; }
 .catlegend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 
+/* AI 자료 요청 */
+.req { padding: 12px 0; border-top: 1px solid var(--line); }
+.req h3 { margin: 0 0 4px; font-size: 1rem; }
+.req .meta { font-size: .86rem; color: var(--muted); }
+.cmd { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
+.cmd code { flex: 1; min-width: 0; background: var(--surface-2); border-radius: 8px; padding: 8px 10px; font-size: .84rem; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, Consolas, "Cascadia Mono", monospace; }
+.cmd button { min-height: 38px; padding: 0 14px; flex: none; }
+.rules { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: .9rem; margin: 0 0 8px; }
+.rules ul { margin: 6px 0 0 18px; padding: 0; }
 /* 꺾은선 그래프 */
 .gbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; }
 .lc { margin: 14px 0 8px; }
@@ -201,6 +210,14 @@ footer { margin-top: 32px; font-size: .85rem; color: var(--muted); }
       <p class="muted small">원인을 확정하는 목록이 아니에요. 각 후보에 대해 “데이터에서 관측됐는지”만 표시합니다. 판단은 AI나 사용자가 해요.</p>
       <div class="filters" role="group" aria-label="후보 보기"><button type="button" data-f="all" aria-pressed="true">전체</button><button type="button" data-f="supports" aria-pressed="false">근거 있음</button><button type="button" data-f="against" aria-pressed="false">근거 없음</button><button type="button" data-f="no_data" aria-pressed="false">데이터 없음</button></div>
       <div id="hyps"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-req">
+    <div class="card">
+      <h2 id="h-req">AI에게 더 줄 자료 (명령 모음)</h2>
+      <p class="muted small">AI가 분석하다가 새 자료가 필요하면 <b>이 목록에 있는 것만</b> 요청하도록 규칙을 정해 뒀어요. 명령 옆 <b>복사</b>를 눌러 도구 폴더(<code>src</code> 폴더가 있는 곳)에서 연 PowerShell에 붙여 넣고, 나온 글을 그대로 AI에게 붙여 넣으세요. 확인 명령은 읽기 전용이고 아무것도 자동으로 보내지 않아요.</p>
+      <div id="reqs"></div>
     </div>
   </section>
 
@@ -664,12 +681,30 @@ function renderSegs() {
   $('#segs').innerHTML = html;
 }
 
+/* ---------- AI에게 더 줄 자료 (미리 정해 둔 명령) ---------- */
+function renderReqs() {
+  const R = P.requests || [];
+  if (!R.length) { $('#reqs').innerHTML = '<p class="muted">요청 목록이 없어요.</p>'; return; }
+  const rules = `<div class="rules"><b>AI에게 알려 줄 규칙</b> (위의 “AI에게 보여줄 내용 복사” 문구에 들어 있어요)<ul>${(P.protocol || []).map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>`;
+  const card = r => {
+    const body = r.kind === 'probe'
+      ? `<div class="cmd"><code>${esc(r.command)}</code><button type="button" data-copy="${esc(r.command)}" aria-label="${esc(r.id)} 명령 복사">복사</button></div>`
+      : `<ol class="small" style="margin:8px 0 0 18px;padding:0">${(r.steps || []).map(s => `<li>${esc(String(s).replace(/^\(\d+\)\s*/, ''))}</li>`).join('')}</ol><div class="cmd"><button type="button" data-copy="${esc((r.steps || []).join('\n'))}" aria-label="${esc(r.id)} 순서 전체 복사">순서 전체 복사</button></div>`;
+    return `<div class="req"><h3>${esc(r.id)}. ${esc(r.title)}</h3><div class="meta">언제: ${esc(r.when)}<br>걸리는 시간: ${esc(r.minutes)} · 얻는 것: ${esc(r.collects)}</div>${body}</div>`;
+  };
+  $('#reqs').innerHTML = rules + '<h3 style="margin:14px 0 4px">확인 명령 (읽기 전용 · 결과는 개인정보를 가린 짧은 글)</h3>' + R.filter(r => r.kind === 'probe').map(card).join('') + '<h3 style="margin:18px 0 4px">증상 재현·표시 순서</h3>' + R.filter(r => r.kind !== 'probe').map(card).join('');
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest && e.target.closest('[data-copy]'); if (!b) return;
+  const ok = await copyText(b.dataset.copy); const old = b.textContent; b.textContent = ok ? '복사했어요' : '복사 실패'; $('#live').textContent = b.textContent; setTimeout(() => { b.textContent = old; }, 2500);
+});
+
 /* ---------- 시스템 정보 ---------- */
 function renderSys() {
   const s = P.system; if (!s) { $('#sys').innerHTML = '<p class="muted">시스템 스냅샷 없이 만들어졌어요.</p>'; return; }
   const d = s.display || {}; const ev = ((s.events_since_boot || {}).system || {}); const dev = s.devices_with_problems || [];
   const adapters = (d.adapters || []).map(a => `<li>${esc(a.adapter)} <span class="muted small">${a.width ? esc(a.width + '×' + a.height + ' · ' + a.refresh_hz + 'Hz') : '화면 출력 없음'} · 드라이버 ${esc(a.driver_version)} (${esc(a.driver_date || '')})</span></li>`).join('');
-  $('#sys').innerHTML = `<div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div><h3>화면</h3><ul class="plain"><li>모니터: ${(d.monitors || []).map(m => esc(m.model)).join(', ') || '-'}</li>${adapters}<li class="muted small">배율 DPI ${esc(d.dpi_applied)} · 하드웨어 가속 스케줄링 ${d.hardware_gpu_scheduling === 1 ? '켜짐' : (d.hardware_gpu_scheduling === 2 ? '꺼짐' : '기본')}</li>${(d.virtual_or_remote_adapters || []).length ? `<li>${chip('c-warn', 'warn', '가상/원격 어댑터')} ${esc(d.virtual_or_remote_adapters.join(', '))}</li>` : ''}</ul></div>
+  $('#sys').innerHTML = `<div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))"><div><h3>화면</h3><ul class="plain"><li>모니터: ${(d.monitors || []).map(m => esc(m.model)).join(', ') || '-'}</li>${adapters}<li class="muted small">배율 DPI ${esc(d.dpi_applied)} · 하드웨어 가속 스케줄링 ${d.hardware_gpu_scheduling === 2 ? '켜짐' : (d.hardware_gpu_scheduling === 1 ? '꺼짐' : '기본/알 수 없음')}</li>${(d.virtual_or_remote_adapters || []).length ? `<li>${chip('c-warn', 'warn', '가상/원격 어댑터')} ${esc(d.virtual_or_remote_adapters.join(', '))}</li>` : ''}</ul></div>
   <div><h3>이번 부팅의 경고·오류 (${esc(ev.total || 0)}건)</h3><ul class="plain">${(ev.groups || []).slice(0, 8).map(g => `<li>${esc(g.provider)} #${esc(g.event_id)} <span class="chip c-none">${esc(g.occurrences)}번</span><div class="muted small">${esc(g.first.replace('T', ' ').slice(5, 16))} ~ ${esc(g.last.replace('T', ' ').slice(5, 16))}</div></li>`).join('') || '<li class="muted">없음</li>'}</ul></div>
   <div><h3>문제가 보고된 장치</h3><ul class="plain">${dev.map(x => `<li>${esc(x.device)}<div class="muted small">코드 ${esc(x.error_code)} · ${esc(x.meaning)}</div></li>`).join('') || '<li class="muted">없음</li>'}</ul><h3 style="margin-top:14px">전원</h3><p class="small">전원 계획: ${esc((s.power || {}).active_plan || '-')} · 빠른 시작: ${(s.power || {}).fast_startup === 1 ? '켜짐' : '꺼짐'}</p></div></div><p class="muted small">${(s.notes || []).map(esc).join('<br>')}</p>`;
 }
@@ -684,6 +719,7 @@ function aiText() {
   L.push(''); L.push('## 원인 후보 체크리스트 (supports=관측됨 / against=기준 미만 / no_data=측정 안 됨)'); hyps.forEach(h => L.push(`- [${h.evidence}] ${h.id} ${h.hypothesis} — ${h.detail}`));
   L.push(''); L.push('## 온도-팬 분석'); (P.thermal || []).forEach(t => L.push('- ' + JSON.stringify(t))); if (!(P.thermal || []).length) L.push('- 없음(센서 없음 또는 온도 변화폭 부족)');
   L.push(''); L.push('## 내가 표시한 구간/메모'); (P.segments || []).forEach(s => L.push(`- 구간 "${s.label}" ${s.start} ~ ${s.end}`)); (P.notes || []).forEach(n => L.push(`- 메모 "${n.label}" ${n.time}`)); if (!(P.segments || []).length && !(P.notes || []).length) L.push('- 없음');
+  L.push(''); L.push('## 더 필요한 자료는 이렇게 요청하세요 (AI용 규칙 + 요청 목록)'); L.push(P.request_text_compact || '');
   L.push(''); L.push('※ 더 자세한 분 단위 데이터는 metrics_1min.csv, summary.json, schema.md를 함께 첨부하면 좋습니다.');
   return L.join('\n');
 }
@@ -707,7 +743,7 @@ $$('[data-f]').forEach(b => b.addEventListener('click', () => { state.filter = b
   const gen = Date.parse(P.generated_at), last = Date.parse(b.window_end);
   if (gen && last && (gen - last) > 15 * 60000) $('#stale').innerHTML = `<div class="banner stale" role="status">마지막 기록이 ${minToLabel((gen - last) / 60000)} 전이에요. 수집기가 멈춰 있었을 수 있어서, 지금 상태가 아니라 <b>그때까지의 기록</b>이에요.</div>`;
   if (N === 0) { $('#groups').innerHTML = '<p>기록이 없어요.</p>'; return; }
-  renderGlance(); renderHeatmap(); renderHyps(); renderSegs(); renderSys();
+  renderGlance(); renderHeatmap(); renderHyps(); renderReqs(); renderSegs(); renderSys();
   $('#foot').innerHTML = `<p>이 화면은 <code>${esc(P.tool_version || '')}</code> 도구가 ${esc(String(P.generated_at || '').replace('T', ' '))}에 만들었어요. 파일 경로·창 제목·계정·IP·MAC·시리얼 번호는 수집하지 않아요(저장소 README 참고). 이 파일은 인터넷 연결 없이 열려요.</p>`;
 })();
 </script>

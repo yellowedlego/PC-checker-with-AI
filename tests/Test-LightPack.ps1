@@ -27,7 +27,7 @@ foreach ($png in Get-ChildItem $L -Filter 'chart_*.png') {
   Check "PNG 폭 <= 1000px, 크기 <= 300KB: $($png.Name)" ($w -le 1000 -and $png.Length -le 300KB) "w=$w kb=$([math]::Round($png.Length/1KB))"
 }
 $md = [IO.File]::ReadAllText((Join-Path $L 'summary.md'), $utf8); $bytes = $utf8.GetByteCount($md)
-Check 'summary.md <= 4600 bytes' ($bytes -le 4600) "bytes=$bytes"
+Check 'summary.md <= 6400 bytes (핵심 요약 + AI 요청 목록)' ($bytes -le 6400) "bytes=$bytes"
 Check 'summary.md: 임시 기준 안내' ($md -match '임시 값' -and $md -match '단정하지 않습니다')
 Check 'summary.md: 글자 히트맵(이모지 칸)' ([regex]::Matches($md, $sqRe).Count -gt 50)
 Check 'summary.md: 원인 후보 supports 표시' ($md -match '\[supports\]')
