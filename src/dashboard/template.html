@@ -13,6 +13,7 @@
   --h0: #efe9db; --h1: #e3b768; --h2: #b3452c; --nodata: #e9e4d6; --tex: rgba(0,0,0,.34);
   --ok-bg: #e4efe5; --ok-fg: #2f5b3a; --warn-bg: #faebc8; --warn-fg: #6e4700; --hot-bg: #f7dcd3; --hot-fg: #8c2a16; --none-bg: #ebe7db; --none-fg: #5f574c;
   --seg: #ddd2f0; --seg-fg: #4a3a73;
+  --s1: #a9482a; --s2: #2b5c8a; --s3: #5f7a2e; --s4: #59534a; --s5: #7a4a8c; --s6: #1f7a78;
   --radius: 14px; --shadow: 0 1px 2px rgba(60,50,30,.06), 0 4px 16px rgba(60,50,30,.05);
   --font: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 }
@@ -22,6 +23,7 @@
   --h0: #2f2c26; --h1: #a77b2c; --h2: #f2906a; --nodata: #34312a; --tex: rgba(255,255,255,.42);
   --ok-bg: #243a2b; --ok-fg: #a8d8b3; --warn-bg: #45381a; --warn-fg: #f1d08a; --hot-bg: #4a2a21; --hot-fg: #ffb9a3; --none-bg: #38352d; --none-fg: #c9c2b2;
   --seg: #3b3354; --seg-fg: #d6c8f5;
+  --s1: #eb8e6d; --s2: #8fb8ff; --s3: #b7d27a; --s4: #cfc7b6; --s5: #d1a7e6; --s6: #7fd6d3;
   --shadow: 0 1px 2px rgba(0,0,0,.4);
 }
 @media (prefers-color-scheme: dark) {
@@ -30,7 +32,8 @@
     --accent: #eb8e6d; --accent-soft: #43302a; --focus: #8fb8ff;
     --h0: #2f2c26; --h1: #a77b2c; --h2: #f2906a; --nodata: #34312a; --tex: rgba(255,255,255,.42);
     --ok-bg: #243a2b; --ok-fg: #a8d8b3; --warn-bg: #45381a; --warn-fg: #f1d08a; --hot-bg: #4a2a21; --hot-fg: #ffb9a3; --none-bg: #38352d; --none-fg: #c9c2b2;
-    --seg: #3b3354; --seg-fg: #d6c8f5; --shadow: 0 1px 2px rgba(0,0,0,.4);
+    --seg: #3b3354; --seg-fg: #d6c8f5;
+  --s1: #eb8e6d; --s2: #8fb8ff; --s3: #b7d27a; --s4: #cfc7b6; --s5: #d1a7e6; --s6: #7fd6d3; --shadow: 0 1px 2px rgba(0,0,0,.4);
   }
 }
 * { box-sizing: border-box; }
@@ -123,6 +126,22 @@ td.c.note-on { background: var(--surface); color: var(--accent); text-align: cen
 .catlegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; margin: 6px 0 0; }
 .catlegend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 
+/* 꺾은선 그래프 */
+.gbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; }
+.lc { margin: 14px 0 8px; }
+.lc-title { font-size: .92rem; margin: 0 0 4px; color: var(--muted); font-weight: 600; }
+.lc-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 6px; }
+.lc-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; font-size: .84rem; }
+.lc-chip svg { width: 30px; height: 10px; flex: none; }
+.lc-chip[aria-pressed="false"] { opacity: .55; }
+.lc-chip[aria-pressed="false"] .lc-name { text-decoration: line-through; }
+.lc-chip[aria-pressed="true"] { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+svg.lc-svg { display: block; max-width: 100%; height: auto; touch-action: pan-y; overflow: visible; }
+svg.lc-svg:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+svg.lc-svg text { font-family: var(--font); fill: var(--muted); font-size: 11.5px; }
+svg.lc-svg .lc-end { font-weight: 700; font-size: 12px; }
+svg.lc-svg .lc-grid { stroke: var(--line); stroke-width: 1; }
+svg.lc-svg .lc-axis { stroke: var(--muted); stroke-width: 1; fill: none; }
 /* 원인 후보 */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .hyp { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -212,6 +231,10 @@ const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const store = { get(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 const state = { scale: store.get('pcc.scale', 'abs'), value: store.get('pcc.value', 'avg'), sort: store.get('pcc.sort', 'default'), filter: 'all' };
+function loadJson(k, d) { try { const v = JSON.parse(store.get(k, '')); return v == null ? d : v; } catch (e) { return d; } }
+state.view = loadJson('pcc.view', {}); state.lShown = new Set(loadJson('pcc.lshown', [])); state.lHidden = new Set(loadJson('pcc.lhidden', []));
+const DEFAULT_VIEW = { sensor: 'line' };   // 온도와 팬은 두 선의 관계를 보는 게 핵심이라 기본을 꺾은선으로
+const viewOf = g => state.view[g.id] || DEFAULT_VIEW[g.id] || 'heat';
 
 /* ---------- 아이콘 (이모지 대신 작은 SVG) ---------- */
 const ICON = {
@@ -320,6 +343,7 @@ function tAbs(k, v) {
 }
 function fmt(v) { if (v == null || isNaN(v)) return '-'; const a = Math.abs(v); if (a >= 1000) return Math.round(v).toLocaleString('ko-KR'); if (a >= 100) return v.toFixed(0); if (a >= 10) return v.toFixed(1); return (+v.toFixed(2)).toString(); }
 const unitOf = k => { const u = info(k).unit; return u ? (u.length <= 3 ? u : '') : ''; };
+function phaseKo(p) { return p === 'boot_settle' ? '부팅 직후' : p === 'baseline' ? '기준선' : p === 'normal' ? '일반' : String(p || '').replace(/^segment:/, '구간: '); }
 function clock(i) { const t = times[i]; return t ? t.replace('T', ' ').slice(5, 16) : ''; }
 function minToLabel(m) { m = Math.round(m); if (m < 60) return m + '분'; if (m < 1440) return Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : ''); return Math.floor(m / 1440) + '일 ' + Math.floor((m % 1440) / 60) + '시간'; }
 
@@ -364,15 +388,16 @@ function buildRows() {
 }
 
 /* ---------- 마커 ---------- */
-function markerBins() {
-  const seg = new Array(B).fill(null), note = new Array(B).fill(null);
+function markerBins(bn) {
+  bn = bn || { B: B, idx: binIdx };   // 히트맵은 기본 칸 묶음, 꺾은선은 더 촘촘한 묶음을 넘겨 쓴다
+  const seg = new Array(bn.B).fill(null), note = new Array(bn.B).fill(null);
   for (const s of (P.segments || [])) {
     const a = Date.parse(s.start), b = Date.parse(s.end);
-    for (let i = 0; i < B; i++) { const [st, en] = binIdx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (t0 < b && t1 > a) seg[i] = s.label; }
+    for (let i = 0; i < bn.B; i++) { const [st, en] = bn.idx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (t0 < b && t1 > a) seg[i] = s.label; }
   }
   for (const n of (P.notes || [])) {
     const a = Date.parse(n.time);
-    for (let i = 0; i < B; i++) { const [st, en] = binIdx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (a >= t0 && a < t1) { note[i] = n.label; break; } }
+    for (let i = 0; i < bn.B; i++) { const [st, en] = bn.idx(i); const t0 = Date.parse(times[st]), t1 = Date.parse(times[en - 1]) + 60000; if (a >= t0 && a < t1) { note[i] = n.label; break; } }
   }
   return { seg, note };
 }
@@ -392,12 +417,15 @@ function axisHtml(mk) {
 function groupHtml(rg, mk) {
   const { g, rows } = rg;
   if (!rows.length) {
-    if (g.id === 'sensor') return `<details class="group" open><summary>${esc(g.title)}</summary><div class="gbody"><div class="hm-empty"><b>아직 CPU 온도와 케이스 팬 값이 없어요.</b> Windows는 이 값을 기본으로 알려 주지 않아요. 아래처럼 하면 이 줄들이 채워져요.<ol><li>무료 프로그램 LibreHardwareMonitor(또는 OpenHardwareMonitor)를 실행해 두세요.</li><li>이 도구를 계속 켜 둔 채 평소처럼 쓰고, 증상이 나타나면 기록한 뒤 다시 내보내세요.</li></ol><span class="muted small">GPU 팬 속도는 NVIDIA 상세 줄에서 볼 수 있어요. 센서 프로그램은 이 도구에 포함되어 있지 않아요.</span></div></div></details>`;
+    if (g.id === 'sensor') return `<details class="group" data-gid="${g.id}" open><summary>${esc(g.title)}</summary><div class="gbody"><div class="hm-empty"><b>아직 CPU 온도와 케이스 팬 값이 없어요.</b> Windows는 이 값을 기본으로 알려 주지 않아요. 아래처럼 하면 이 줄들이 채워져요.<ol><li>무료 프로그램 LibreHardwareMonitor(또는 OpenHardwareMonitor)를 실행해 두세요.</li><li>이 도구를 계속 켜 둔 채 평소처럼 쓰고, 증상이 나타나면 기록한 뒤 다시 내보내세요.</li></ol><span class="muted small">GPU 팬 속도는 NVIDIA 상세 줄에서 볼 수 있어요. 센서 프로그램은 이 도구에 포함되어 있지 않아요.</span></div></div></details>`;
     return '';
   }
   const open = g.collapsed ? '' : ' open';
   const gi = flatRows.length;
-  let html = `<details class="group"${open}><summary><span>${esc(g.title)}</span><span class="muted small" style="font-weight:400">${rows.length}줄</span><button type="button" class="explain-btn" data-ex="${g.id}" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-${g.id}" hidden>${esc(g.explain)}</p><div class="hm-scroll"><table class="hm" role="grid" aria-label="${esc(g.title)} 히트맵" style="--cw:${CW}px">`;
+  const isLine = viewOf(g) === 'line';
+  let html = `<details class="group" data-gid="${g.id}"${open}><summary><span>${esc(g.title)}</span><span class="muted small" style="font-weight:400">${rows.length}줄</span><button type="button" class="explain-btn" data-ex="${g.id}" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-${g.id}" hidden>${esc(g.explain)}</p>${gbarHtml(g, isLine)}`;
+  if (isLine) { html += lineGroupHtml(rg); } else {
+  html += `<div class="hm-scroll"><table class="hm" role="grid" aria-label="${esc(g.title)} 히트맵" style="--cw:${CW}px">`;
   html += `<thead><tr><th class="lab" scope="col">${B}칸 · ${binSize}분씩</th>${axisHtml(mk)}<th class="stath" scope="col">평균</th><th class="stath" scope="col">최고</th><th class="stath" scope="col">상태(임시)</th></tr></thead><tbody>`;
   if (g.id === rowsFirstGroupId) {
     html += `<tr class="mk"><th class="lab" scope="row">내가 표시한 구간</th>${mk.seg.map((s, b) => `<td class="c ${s ? 'seg-on' : ''}" ${s ? `title="${esc(s)}"` : ''} ${s ? 'role="gridcell"' : ''}></td>`).join('')}<td></td><td></td><td></td></tr>`;
@@ -420,6 +448,7 @@ function groupHtml(rg, mk) {
     html += `<td class="st stat">${esc(meanTxt)}<span class="muted small"> ${esc(info(r.key).unit.length <= 4 ? info(r.key).unit : '')}</span></td><td class="st">${esc(maxTxt)}</td><td class="st">${readingChip(st.reading)}</td></tr>`;
   });
   html += `</tbody></table></div>`;
+  }
   // 표로 보기 (색에 의존하지 않는 대체 수단)
   html += `<details class="tabletoggle"><summary>표로 보기 (숫자 그대로)</summary><div class="datatbl"><table><thead><tr><th>시각</th>${rows.map(r => `<th>${esc(r.label)}</th>`).join('')}</tr></thead><tbody>`;
   for (let b = 0; b < B; b++) { const [s] = binIdx(b); html += `<tr><td>${esc(clock(s))}</td>${rows.map(r => `<td>${isNaN(r.vals[b]) ? '-' : fmt(r.vals[b])}</td>`).join('')}</tr>`; }
@@ -430,7 +459,7 @@ let rowsFirstGroupId = null;
 function strGroupHtml() {
   const ks = Object.keys(strBin).filter(k => strBin[k].some(v => v));
   if (!ks.length) return '';
-  let html = `<details class="group" open><summary><span>문자로 된 정보</span><span class="muted small" style="font-weight:400">${ks.length}줄</span><button type="button" class="explain-btn" data-ex="str" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-str" hidden>숫자가 아니라 이름·상태로 된 정보예요. 같은 색은 같은 값이에요. “GPU 성능 제한 사유”의 none/idle은 제한 없음, thermal·power가 들어가면 열이나 전력 때문에 성능을 낮췄다는 뜻이에요. 칸에 마우스나 방향키를 대면 이름이 나와요.</p><div class="hm-scroll"><table class="hm" role="grid" aria-label="문자 정보" style="--cw:${CW}px"><tbody>`;
+  let html = `<details class="group" data-gid="str" open><summary><span>문자로 된 정보</span><span class="muted small" style="font-weight:400">${ks.length}줄</span><button type="button" class="explain-btn" data-ex="str" aria-expanded="false">이 그래프는?</button></summary><div class="gbody"><p class="explain" id="ex-str" hidden>숫자가 아니라 이름·상태로 된 정보예요. 같은 색은 같은 값이에요. “GPU 성능 제한 사유”의 none/idle은 제한 없음, thermal·power가 들어가면 열이나 전력 때문에 성능을 낮췄다는 뜻이에요. 칸에 마우스나 방향키를 대면 이름이 나와요.</p><div class="hm-scroll"><table class="hm" role="grid" aria-label="문자 정보" style="--cw:${CW}px"><tbody>`;
   let legend = '';
   for (const k of ks) {
     const rid = flatRows.length; const list = Object.entries(strBin[k].reduce((a, v) => { if (v) a[v] = (a[v] || 0) + 1; return a; }, {})).sort((a, b) => b[1] - a[1]).map(e => e[0]);
@@ -443,10 +472,12 @@ function strGroupHtml() {
   return html + `</tbody></table></div>${legend}</div></details>`;
 }
 function renderHeatmap() {
-  flatRows.length = 0; rampCache = null;
+  const openState = {}; $$('#groups details.group[data-gid]').forEach(d => { openState[d.dataset.gid] = d.open; });   // 다시 그려도 펼침 상태 유지
+  flatRows.length = 0; rampCache = null; spalCache = null; lcStore = {};
   const mk = markerBins(); const rg = buildRows();
   rowsFirstGroupId = (rg.find(x => x.rows.length) || { g: {} }).g.id;
   $('#groups').innerHTML = rg.map(x => groupHtml(x, mk)).join('') + strGroupHtml();
+  $$('#groups details.group[data-gid]').forEach(d => { if (d.dataset.gid in openState) d.open = openState[d.dataset.gid]; });
   renderLegend();
   $$('#groups table.hm').forEach(t => { const first = $('td.c[data-r]', t); if (first) first.tabIndex = 0; });
 }
@@ -462,7 +493,7 @@ function cellInfo(td) {
   const r = flatRows[+td.dataset.r], b = +td.dataset.c; if (!r) return null;
   const [s, e] = binIdx(b); const tm = clock(s) + (e - s > 1 ? ' ~ ' + clock(e - 1).slice(6) : '');
   const after = `부팅 후 ${minToLabel(mins[s])}`;
-  const ph = phases[s] ? ' · ' + phases[s].replace(/^segment:/, '구간: ') : '';
+  const ph = phases[s] ? ' · ' + phaseKo(phases[s]) : '';
   const mk = marks.slice(s, e).filter(Boolean).join(' / ');
   if (r.str) { const v = strBin[r.key][b]; return { html: `<b>${esc(r.label)}</b><br>${v ? esc(v) : '값 없음'}<br><span style="opacity:.8">${esc(tm)}<br>${esc(after)}${esc(ph)}</span>`, text: `${r.label} ${v || '값 없음'} ${tm}` }; }
   const v = r.vals[b], f = info(r.key); const t = (state.scale === 'abs' && r.hasThr) ? r.abs[b] : r.rel[b];
@@ -494,6 +525,106 @@ document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('.explain-btn'); if (!b) return; e.preventDefault(); e.stopPropagation();
   const p = document.getElementById('ex-' + b.dataset.ex); const open = p.hidden; p.hidden = !open; b.setAttribute('aria-expanded', String(open));
 });
+
+/* ---------- 꺾은선 그래프 (순수 SVG, 오프라인) ---------- */
+// 선 그래프는 히트맵보다 촘촘하게(최대 300점) 묶는다. 색만으로 구분하지 않도록 선 모양(실선·파선·점선…)과 줄 끝 이름을 함께 쓴다.
+const LB = (() => { const size = Math.max(1, Math.ceil(N / 300)); return { size, B: Math.ceil(N / size), idx: b => [b * size, Math.min(N, (b + 1) * size)] }; })();
+const lineCache = {};
+function lineVals(k, mode) {
+  const ck = mode + '|' + k; if (lineCache[ck]) return lineCache[ck];
+  const arr = mode === 'avg' ? num[k] : (pk[k] || num[k]); const out = new Float64Array(LB.B);
+  for (let b = 0; b < LB.B; b++) { const [s, e] = LB.idx(b); let sum = 0, c = 0, mx = NaN; for (let i = s; i < e; i++) { const v = arr[i]; if (!isNaN(v)) { sum += v; c++; if (isNaN(mx) || v > mx) mx = v; } } out[b] = c ? (mode === 'avg' ? sum / c : mx) : NaN; }
+  return (lineCache[ck] = out);
+}
+let lcStore = {}, spalCache = null;
+const SDASH = ['', '9 5', '2 4', '10 4 2 4', '4 3', '1 5'];
+const SGLYPH = ['──', '─ ─', '···', '─·─', '‥‥', '· ·'];
+function sColor(i) { if (!spalCache) { const cs = getComputedStyle(document.documentElement); spalCache = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6'].map(v => cs.getPropertyValue(v).trim()); } return spalCache[i % 6]; }
+function gbarHtml(g, isLine) {
+  return `<div class="gbar"><div class="seg" role="group" aria-label="${esc(g.title)} 보기 방식"><button type="button" data-view="heat" data-g="${g.id}" aria-pressed="${!isLine}">히트맵</button><button type="button" data-view="line" data-g="${g.id}" aria-pressed="${isLine}">꺾은선</button></div><span class="muted small">${isLine ? '아래 이름표를 누르면 그 줄을 보이게/숨길 수 있어요. 점선·쇄선 같은 선 모양과 줄 끝 이름으로도 구분돼요.' : '값이 시간에 따라 어떻게 오르내렸는지 선으로 보려면 “꺾은선”을 누르세요.'}</span></div>`;
+}
+const panelKeyOf = k => { const u = info(k).unit; return (u === '°C' || u === '%') ? 'scale100' : (u || '기타'); };
+const panelTitle = pk => pk === 'scale100' ? '°C 또는 % (같은 눈금)' : '단위: ' + pk;
+function niceCeil(x) { if (!(x > 0)) return 1; const mag = Math.pow(10, Math.floor(Math.log10(x))); for (const f of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (f * mag >= x) return f * mag; return 10 * mag; }
+function lineWidth() { const w = ($('#groups') && $('#groups').clientWidth) || 900; return Math.max(320, Math.min(1100, Math.floor(w - 34))); }
+// 기본으로 보일 줄: 온도·팬 그룹은 '온도 + 팬 통합(평균)'(두 선의 관계가 핵심), 나머지는 눈에 띄는 순 상위 몇 줄. 사용자가 고른 건 그대로 기억한다.
+const defaultVisible = (g, r, rank, limit) => g.id === 'sensor' ? /^hw\.temp_c\.|^fan_group\.[a-z]+\.mean_pct$/.test(r.key) : rank < limit;
+const lineVisible = (g, r, rank, limit) => state.lShown.has(r.key) ? true : (state.lHidden.has(r.key) ? false : defaultVisible(g, r, rank, limit));
+function lineGroupHtml(rg) {
+  const { g, rows } = rg, W = lineWidth(), limit = g.id === 'sensor' ? 8 : 4, panels = {}; lastLW = W;
+  rows.forEach(r => { const pk = panelKeyOf(r.key); (panels[pk] = panels[pk] || []).push(r); });
+  const order = Object.keys(panels).sort((a, b) => a === 'scale100' ? -1 : b === 'scale100' ? 1 : (a < b ? -1 : 1));
+  return order.map((pk, pi) => {
+    const prs = panels[pk], rank = {}; prs.slice().sort((a, b) => b.score - a.score).forEach((r, i) => rank[r.key] = i);
+    const vis = prs.filter(r => lineVisible(g, r, rank[r.key], limit));
+    // 선 모양은 '기본으로 보이는 줄'부터 차례로 나눠 줘서 처음 보이는 줄끼리는 겹치지 않게 하고, 토글해도 모양이 바뀌지 않게 키마다 고정한다
+    const sorder = prs.filter(r => defaultVisible(g, r, rank[r.key], limit)).concat(prs.filter(r => !defaultVisible(g, r, rank[r.key], limit))), sidx = {}; sorder.forEach((r, i) => { sidx[r.key] = i; });
+    const chips = prs.map(r => { const on = lineVisible(g, r, rank[r.key], limit), si = sidx[r.key], col = sColor(si); return `<button type="button" class="lc-chip" data-lc="${esc(r.key)}" aria-pressed="${on}"><svg viewBox="0 0 30 10" aria-hidden="true"><line x1="1" y1="5" x2="29" y2="5" stroke="${col}" stroke-width="2.6" stroke-linecap="round"${SDASH[si % 6] ? ` stroke-dasharray="${SDASH[si % 6]}"` : ''}/></svg><span class="lc-name">${esc(r.label)}</span></button>`; }).join('');
+    return `<div class="lc"><h3 class="lc-title">${esc(panelTitle(pk))}</h3><div class="lc-legend" role="group" aria-label="보일 줄 고르기">${chips}</div>${vis.length ? lineSvg(g, pi, pk, prs, vis, W, sidx) :'<p class="muted small">보일 줄을 하나 이상 골라 주세요.</p>'}</div>`;
+  }).join('');
+}
+function lineSvg(g, pi, pk, prs, vis, W, sidx) {
+  const id = `lc-${g.id}-${pi}`, H = 236, wide = W >= 640, m = { l: 58, r: wide ? 150 : 16, t: 24, b: 32 };
+  const pw = W - m.l - m.r, ph = H - m.t - m.b, L = LB.B;
+  const X = i => m.l + pw * i / Math.max(1, L - 1);
+  const series = vis.map(r => ({ key: r.key, label: r.label, vals: lineVals(r.key, state.value), si: sidx[r.key], unit: info(r.key).unit || '' }));
+  let dmax = 0, dmin = 0; for (const s of series) for (const v of s.vals) if (!isNaN(v)) { if (v > dmax) dmax = v; if (v < dmin) dmin = v; }
+  const ymin = dmin < 0 ? -niceCeil(-dmin * 1.05) : 0;
+  let ymax = pk === 'scale100' ? (dmax > 100 ? niceCeil(dmax * 1.05) : 100) : niceCeil(dmax * 1.08); if (!(ymax > ymin)) ymax = ymin + 1;
+  const Y = v => m.t + ph - ph * (v - ymin) / (ymax - ymin);
+  const mk = markerBins(LB), f1 = x => x.toFixed(1);
+  let svg = `<svg class="lc-svg" id="${id}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" tabindex="0" aria-label="${esc(g.title)} ${esc(panelTitle(pk))} 꺾은선 그래프. 왼쪽·오른쪽 방향키로 시각을 옮기면 값을 읽어 줘요.">`;
+  for (let i = 0; i < L;) { if (mk.seg[i]) { let j = i; while (j + 1 < L && mk.seg[j + 1] === mk.seg[i]) j++; svg += `<rect x="${f1(X(i))}" y="${m.t}" width="${f1(Math.max(2, X(j) - X(i) + pw / Math.max(1, L - 1)))}" height="${ph}" fill="var(--seg)" opacity=".75"/><text x="${f1(X(i) + 4)}" y="${m.t + 13}" style="font-weight:700;fill:var(--seg-fg)">${esc(mk.seg[i])}</text>`; i = j + 1; } else i++; }
+  for (let t = 0; t <= 5; t++) { const v = ymin + (ymax - ymin) * t / 5, y = Y(v); svg += `<line class="lc-grid" x1="${m.l}" x2="${m.l + pw}" y1="${f1(y)}" y2="${f1(y)}"/><text x="${m.l - 8}" y="${f1(y + 4)}" text-anchor="end">${esc(fmt(v))}</text>`; }
+  const early = mins.length && mins[0] < 180, span = mins[N - 1] - mins[0];
+  for (let t = 0; t <= 5; t++) { const bi = Math.round(t * (L - 1) / 5), s0 = LB.idx(bi)[0]; const lab = early ? '+' + minToLabel(mins[s0]) : (span > 1440 ? clock(s0) : clock(s0).slice(6)); svg += `<line class="lc-grid" x1="${f1(X(bi))}" x2="${f1(X(bi))}" y1="${m.t + ph}" y2="${m.t + ph + 4}"/><text x="${f1(X(bi))}" y="${m.t + ph + 18}" text-anchor="middle">${esc(lab)}</text>`; }
+  svg += `<rect class="lc-axis" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/>`;
+  const seen = new Set(); let nthr = 0;
+  for (const s of series) { const f = info(s.key); for (const [nm, v] of [['주의', f.warn], ['높음', f.hot]]) { if (v == null || v < ymin || v > ymax || seen.has(v) || nthr >= 3) continue; seen.add(v); nthr++; svg += `<line x1="${m.l}" x2="${m.l + pw}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" stroke="var(--muted)" stroke-dasharray="5 4" opacity=".8"/><text x="${m.l + pw - 4}" y="${f1(Y(v) - 4)}" text-anchor="end">${nm}(임시) ${esc(fmt(v))}</text>`; } }
+  const ends = [];
+  for (const s of series) {
+    const col = sColor(s.si), dash = SDASH[s.si % 6], runs = []; let cur = [], last = -1;
+    for (let k = 0; k < L; k++) { const v = s.vals[k]; if (isNaN(v)) { if (cur.length) runs.push(cur); cur = []; } else { cur.push([X(k), Y(v)]); last = k; } } if (cur.length) runs.push(cur);
+    for (const run of runs) { if (run.length === 1) svg += `<circle cx="${f1(run[0][0])}" cy="${f1(run[0][1])}" r="3" fill="${col}"/>`; else svg += `<path d="${run.map((p, q) => (q ? 'L' : 'M') + f1(p[0]) + ' ' + f1(p[1])).join('')}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`; }
+    if (last >= 0) ends.push({ y: Y(s.vals[last]), label: s.label, col });
+  }
+  if (wide) { ends.sort((a, b) => a.y - b.y); let prev = -99; for (const e of ends) { const y = Math.max(e.y + 4, prev + 17); prev = y; svg += `<text class="lc-end" x="${m.l + pw + 8}" y="${f1(y)}" style="fill:${e.col}">${esc(e.label.length > 14 ? e.label.slice(0, 13) + '…' : e.label)}</text>`; } }
+  mk.note.forEach((n, i) => { if (!n) return; const x = X(i); svg += `<polygon points="${f1(x)},${m.t - 16} ${f1(x + 6)},${m.t - 10} ${f1(x)},${m.t - 4} ${f1(x - 6)},${m.t - 10}" fill="var(--accent)"/><text x="${f1(x + 9)}" y="${m.t - 6}" style="font-weight:700;fill:var(--accent)">${esc(n)}</text>`; });
+  svg += `<g class="xh" style="display:none" pointer-events="none"><line x1="0" x2="0" y1="${m.t}" y2="${m.t + ph}" stroke="var(--text)" stroke-dasharray="3 3" opacity=".6"/>${series.map(s => `<circle r="4.5" fill="${sColor(s.si)}" stroke="var(--surface)" stroke-width="2" style="display:none"/>`).join('')}</g>`;
+  svg += `<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent"/></svg>`;
+  lcStore[id] = { W, m, pw, ph, ymin, ymax, L, X, Y, series: series.map(s => Object.assign({}, s, { col: sColor(s.si) })), idx: null };
+  return svg;
+}
+function lcCross(svg, i, cx, cy) {
+  const st = lcStore[svg.id]; if (!st) return; i = Math.max(0, Math.min(st.L - 1, i)); st.idx = i;
+  const xh = svg.querySelector('.xh'); xh.style.display = ''; const x = st.X(i), ln = xh.querySelector('line'); ln.setAttribute('x1', x); ln.setAttribute('x2', x);
+  const cs = xh.querySelectorAll('circle'); st.series.forEach((s, k) => { const v = s.vals[i]; if (isNaN(v)) cs[k].style.display = 'none'; else { cs[k].style.display = ''; cs[k].setAttribute('cx', x); cs[k].setAttribute('cy', st.Y(v)); } });
+  const [a, e] = LB.idx(i); const when = clock(a) + (e - a > 1 ? ' ~ ' + clock(e - 1).slice(6) : '');
+  const phs = phases[a] ? ' · ' + phaseKo(phases[a]) : '';
+  const rowsHtml = st.series.map(s => `<div>${SGLYPH[s.si % 6]} ${esc(s.label)}: <b>${isNaN(s.vals[i]) ? '값 없음' : esc(fmt(s.vals[i]) + (s.unit ? ' ' + s.unit : ''))}</b></div>`).join('');
+  tip.innerHTML = `<b>${esc(when)}</b><br><span style="opacity:.8">부팅 후 ${esc(minToLabel(mins[a]))}${esc(phs)}</span>${rowsHtml}`; tip.style.display = 'block';
+  const w = tip.offsetWidth, h = tip.offsetHeight; let px = cx + 14, py = cy + 16; if (px + w > innerWidth - 8) px = cx - w - 14; if (py + h > innerHeight - 8) py = cy - h - 14; tip.style.left = Math.max(8, px) + 'px'; tip.style.top = Math.max(8, py) + 'px';
+  $('#live').textContent = when + ' ' + st.series.map(s => s.label + ' ' + (isNaN(s.vals[i]) ? '값 없음' : fmt(s.vals[i]) + ' ' + s.unit)).join(', ');
+}
+function lcHide(svg) { const xh = svg.querySelector('.xh'); if (xh) xh.style.display = 'none'; tip.style.display = 'none'; }
+document.addEventListener('pointermove', e => { const h = e.target.closest && e.target.closest('svg.lc-svg'); if (!h) return; const st = lcStore[h.id]; if (!st) return; const r = h.getBoundingClientRect(); const x = (e.clientX - r.left) * (st.W / r.width); lcCross(h, Math.round((x - st.m.l) / st.pw * (st.L - 1)), e.clientX, e.clientY); });
+document.addEventListener('pointerout', e => { const h = e.target.closest && e.target.closest('svg.lc-svg'); if (h && !h.contains(e.relatedTarget) && document.activeElement !== h) lcHide(h); });
+document.addEventListener('focusin', e => { const h = (e.target.matches && e.target.matches('svg.lc-svg')) ? e.target : null; if (!h) return; const st = lcStore[h.id]; if (!st) return; const r = h.getBoundingClientRect(); lcCross(h, st.idx == null ? st.L - 1 : st.idx, r.left + r.width / 2, r.bottom); });
+document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('svg.lc-svg')) lcHide(e.target); });
+document.addEventListener('keydown', e => {
+  const h = (e.target.matches && e.target.matches('svg.lc-svg')) ? e.target : null; if (!h) return; const st = lcStore[h.id]; if (!st) return;
+  let i = st.idx == null ? st.L - 1 : st.idx; const step = e.shiftKey ? 10 : 1;
+  if (e.key === 'ArrowLeft') i -= step; else if (e.key === 'ArrowRight') i += step; else if (e.key === 'Home') i = 0; else if (e.key === 'End') i = st.L - 1; else return;
+  e.preventDefault(); i = Math.max(0, Math.min(st.L - 1, i)); const r = h.getBoundingClientRect(); lcCross(h, i, r.left + r.width * st.X(i) / st.W, r.bottom);
+});
+document.addEventListener('click', e => {
+  const v = e.target.closest && e.target.closest('[data-view][data-g]');
+  if (v) { state.view[v.dataset.g] = v.dataset.view; store.set('pcc.view', JSON.stringify(state.view)); renderHeatmap(); const nb = [...document.querySelectorAll('[data-view][data-g]')].find(x => x.dataset.g === v.dataset.g && x.dataset.view === v.dataset.view); if (nb) nb.focus(); return; }
+  const c = e.target.closest && e.target.closest('.lc-chip');
+  if (c) { const k = c.dataset.lc; if (c.getAttribute('aria-pressed') === 'true') { state.lHidden.add(k); state.lShown.delete(k); } else { state.lShown.add(k); state.lHidden.delete(k); } store.set('pcc.lhidden', JSON.stringify([...state.lHidden])); store.set('pcc.lshown', JSON.stringify([...state.lShown])); renderHeatmap(); const nc = [...document.querySelectorAll('.lc-chip')].find(x => x.dataset.lc === k); if (nc) nc.focus(); }
+});
+let resizeTimer = null, lastLW = 0;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (Object.keys(lcStore).length && Math.abs(lineWidth() - lastLW) > 24) { lastLW = lineWidth(); renderHeatmap(); } }, 250); });
 
 /* ---------- 한눈에 보기 ---------- */
 const SRC_LABELS = { cpu: 'CPU', memory: '메모리', disk: '디스크', network: '네트워크', gpu_counters: 'GPU 사용률', nvidia_smi: 'NVIDIA 상세', hw_sensors: '온도·팬 센서', processes: '프로세스' };

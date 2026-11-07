@@ -58,6 +58,7 @@ if (Test-Path $htmlPath) {
   Check '대시보드: 데이터 삽입됨(자리표시자 없음)' (-not ($html -match '__PAYLOAD__') -and $html.Length -gt 50000) "len=$($html.Length)"
   Check '대시보드: 외부 주소/CDN/웹폰트 없음(오프라인)' (-not ($html -match '(?i)(src|href)\s*=\s*["'']?https?://|@import|url\(\s*["'']?https?:|<link[^>]+stylesheet'))
   Check '대시보드: 팬 통합 줄 데이터 포함' ($html -match 'fan_group\.case\.mean_pct')
+  Check '대시보드: 꺾은선 보기 포함 (순수 SVG, 외부 스크립트 없음)' (($html -match 'lineGroupHtml') -and ($html -match 'svg\.lc-svg') -and ($html -match '꺾은선') -and -not ($html -match '(?i)<script[^>]+\ssrc='))
 }
 
 Remove-Item $tmp -Recurse -Force
