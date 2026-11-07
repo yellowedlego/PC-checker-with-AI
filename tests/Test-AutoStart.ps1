@@ -119,6 +119,9 @@ foreach ($f in 'Launch.ps1', 'Start-Tray.ps1', 'UI.ps1', 'Make-Report.ps1', 'Sho
 }
 $launch = [IO.File]::ReadAllText((Join-Path $src 'Launch.ps1'), $utf8)
 Check 'Launch.ps1: 공백 경로를 따옴표로 감쌈' ($launch -match "function Q" -and $launch -match "Q \(Join-Path")
+# PowerShell 은 한글도 변수 이름으로 읽는다: "$n개" 는 변수 $n개 로 해석되어 값이 사라진다. "${n}개" 로 써야 한다.
+$interp = @(Get-ChildItem $root -Recurse -Include '*.ps1' -File | Where-Object { $_.FullName -notmatch '\\legacy\\' } | Select-String -Pattern '\$[A-Za-z_][A-Za-z0-9_]*[가-힣]')
+Check '한글이 바로 붙은 변수 보간($n개 같은 형태)이 없음' ($interp.Count -eq 0) (($interp | Select-Object -First 3 | ForEach-Object { $_.Filename + ':' + $_.LineNumber }) -join ', ')
 $hits = @(Get-ChildItem $src -Filter '*.ps1' | Select-String -Pattern 'Invoke-WebRequest|Invoke-RestMethod|WebClient|Start-BitsTransfer|Net\.Sockets|DownloadString')
 Check '네트워크 호출 없음 (src 의 모든 스크립트)' ($hits.Count -eq 0) (($hits | Select-Object -First 3 | ForEach-Object { $_.Filename + ':' + $_.LineNumber }) -join ', ')
 

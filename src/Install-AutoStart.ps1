@@ -36,7 +36,7 @@ if (-not $Yes) { $a = Read-Host "`n위 내용대로 설치할까요? (y/N)"; if 
 
 # 1) 복사
 $n = Copy-AppFiles $PSScriptRoot $P.App
-Write-Host "✓ 스크립트 $n개를 복사했습니다: $($P.Src)"
+Write-Host "✓ 스크립트 ${n}개를 복사했습니다: $($P.Src)"
 $used = 'none'
 # 2) 자동 실행
 if (-not $SkipTask) {

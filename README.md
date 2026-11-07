@@ -34,7 +34,7 @@
 | **내보내기 결과** | 위 데이터를 정리한 CSV·요약·대시보드·가벼운 팩, 그리고 **시스템 스냅샷**: 모니터 모델, 디스플레이 어댑터, 문제가 보고된 장치 이름, 전원 계획, 부팅 이후 이벤트 요약(경로·계정은 가림), 비정상 종료 기록 | `data\export\boot_…\` (`metrics_1min.csv`, `processes.csv`, `summary.json`, `schema.md`, `dashboard.html`, `light\`) | 사용자가 지울 때까지 | 위와 같음. **AI에게 넘기는 파일이 바로 이것** |
 | 설정 | 트레이 알림 켬/끔, 창 항상 위, 마지막으로 알림을 띄운 부팅 시각 | `%LOCALAPPDATA%\PCCheckerWithAI\settings.json` | 유지 | 낮음 |
 | 브라우저 저장값 | 대시보드의 색 기준·보기 방식·고른 줄·테마 같은 **화면 설정만** (측정 데이터는 저장하지 않음) | 브라우저의 localStorage | 브라우저가 관리 | 낮음 |
-| 자동 실행(선택) | 스크립트 복사본, 작업 스케줄러 작업 `PCCheckerWithAI-Logon`(거부되면 시작 폴더 바로가기), 선택 시 바탕화면 바로가기, 설치 정보 | `%LOCALAPPDATA%\PCCheckerWithAI\app\`, `install.json`, 작업 스케줄러 / 시작 폴더 / 바탕화면 | `Uninstall-AutoStart.ps1`로 제거 | 해당 없음(설정) |
+| 자동 실행(선택) | 스크립트 복사본, 작업 스케줄러 작업 `PCCheckerWithAI-Logon`(거부되면 시작 폴더 바로가기), 선택 시 바탕화면 바로가기, 설치 정보 | `%LOCALAPPDATA%\PCCheckerWithAI\app\`, `install.json`, 작업 스케줄러 / 시작 폴더 / 바탕화면 | `Uninstall-AutoStart.ps1`로 제거 | 해당 없음(설정). 작업 정의에는 **현재 사용자 계정 이름(`PC이름\사용자`)** 이 들어가며, Windows 작업 스케줄러 안(이 PC 안)에만 있습니다 |
 
 ### 2) 밖으로 나갈 수 있나요?
 
@@ -262,7 +262,7 @@ boot_<부팅시각>\markers.jsonl     구간/메모 마커
 2. ✅ 데이터 파일: 와이드 CSV, `schema.md`, `summary.json`, 원인 후보 체크리스트
 3. ✅ 히트맵 HTML 대시보드 (절대/상대 색 기준 전환, 팬 통합 줄, 이상 순 정렬)
 4. ✅ 가벼운 AI용 팩: `summary.md`(글자 히트맵 포함), PNG 그래프, `charts_guide.md`
-5. ✅ 로그온 자동 실행, 제거 스크립트, 트레이 아이콘, 표시하기 창 (코드와 테스트 완료. 이 PC에 실제로 등록한 검증은 승인 후 진행)
+5. ✅ 로그온 자동 실행, 제거 스크립트, 트레이 아이콘, 표시하기 창 (Windows 11 실제 PC에서 관리자 권한 없이 작업 스케줄러 등록·확인·제거를 검증함. 실제로 로그온했을 때 시작되는 동작과 다른 Windows 버전은 아직 확인하지 못함)
 6. ✅ AI 자료 요청 명령 모음: 미리 정한 요청 목록(R1~R12, S1~S4)과 읽기 전용 확인 명령 `Probe.ps1`
 7. (선택) 사용자가 API 키 또는 로컬 AI 주소를 넣었을 때만 "AI에게 보내기"
 8. (검토 중) 서버 없이 `live-data.js`를 주기적으로 읽는 실시간 대시보드
