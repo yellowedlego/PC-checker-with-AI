@@ -2,7 +2,7 @@
 
 재부팅한 순간부터 PC의 상태를 부품별로 기록하고, 그 기록을 **AI(채팅 또는 API)가 읽고 원인을 판단할 수 있는 형태**로 내보내는 Windows용 진단 도구입니다.
 
-> 상태: **v0.4 (개발 중)** - 수집 엔진, 데이터 내보내기, 히트맵 대시보드, 가벼운 AI용 팩이 동작합니다. 로그온 자동 실행과 제거 스크립트는 아래 로드맵에 있습니다.
+> 상태: **v0.5 (개발 중)** - 수집 엔진, 데이터 내보내기, 히트맵 대시보드, 가벼운 AI용 팩, 로그온 자동 실행(트레이·표시하기 창)이 동작합니다.
 
 ## 원칙
 
@@ -115,6 +115,38 @@ powershell -ExecutionPolicy Bypass -File .\src\Build-LightPack.ps1
 - 모든 기준선과 정상/주의/높음 표시는 **임시 값**이라고 그림과 문서에 적습니다. 데이터가 없는 그림은 만들지 않고(예: 센서가 없으면 CPU 온도 선 없음), 빠진 그림은 "측정되지 않았다"는 뜻이지 "문제가 없다"는 뜻이 아닙니다.
 - 낮을수록 나쁜 지표(남은 메모리)는 하위 5% 값으로, 높을수록 나쁜 지표는 상위 5% 값으로 판정합니다.
 
+### 로그온 시 자동 실행 (선택)
+
+재부팅할 때마다 직접 켜지 않아도 기록이 시작되게 합니다. **이 PC에 남는 설정을 만들기 때문에 무엇을 만드는지 먼저 보여주고 확인을 받습니다.**
+
+```powershell
+# 1) 미리보기: 무엇을 만들지만 보여주고 아무것도 바꾸지 않습니다
+powershell -ExecutionPolicy Bypass -File .\src\Install-AutoStart.ps1 -WhatIf
+
+# 2) 설치 (확인 질문 후 진행). -DesktopShortcut 을 주면 바탕화면에 '표시하기' 바로가기도 만듭니다
+powershell -ExecutionPolicy Bypass -File .\src\Install-AutoStart.ps1 -DesktopShortcut -StartNow
+
+# 3) 되돌리기: 만든 것을 모두 지웁니다. 기록한 데이터는 -RemoveData 를 줘야만 지웁니다
+powershell -ExecutionPolicy Bypass -File .\src\Uninstall-AutoStart.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File .\src\Uninstall-AutoStart.ps1
+```
+
+만드는 것 (모두 현재 사용자 권한, **관리자 권한 불필요**, 외부 전송 없음):
+
+| 무엇 | 어디에 |
+| --- | --- |
+| 스크립트 복사본 (저장소 폴더를 옮겨도 계속 동작) | `%LOCALAPPDATA%\PCCheckerWithAI\app\src` |
+| 로그온 30초 뒤 실행되는 작업 스케줄러 작업 `PCCheckerWithAI-Logon` (숨김, 시간 제한 없음, 배터리에서도 실행) | 작업 스케줄러. 등록이 거부되면 **시작 폴더 바로가기**로 대신합니다 |
+| (선택) 바탕화면 바로가기 "표시하기" | 바탕화면 |
+
+로그온하면 수집기와 **트레이 아이콘**이 함께 시작됩니다.
+
+- **트레이 아이콘**(알림 영역): 왼쪽 클릭은 "표시하기" 창, 오른쪽 클릭은 메뉴입니다. 메뉴에서 **대시보드 열기**, **AI에 줄 가벼운 파일 만들기**, 기록 켜기/끄기, 시작 알림 켜고 끄기를 할 수 있습니다. 부팅 후 **처음 한 번만** 작은 알림을 띄우고(메뉴에서 끌 수 있음), 그 뒤로는 조용히 상태만 툴팁에 보여줍니다.
+- **"표시하기" 창**: 이름 한 줄을 적고 **구간 시작 / 구간 끝 / 증상 메모** 버튼을 누르면 `Mark.ps1`과 같은 일을 합니다. 현재 기록 상태(● 기록 중 / ▲ 갱신 안 됨 / ■ 멈춤)와 열린 구간 이름이 보이고, "대시보드 열기"와 "AI용 가벼운 파일" 버튼으로 한 번에 리포트를 만듭니다.
+- 한 번에 리포트: `.\src\Make-Report.ps1 [-Pack full|light] [-Open dashboard|folder|none]` (내보내기 → 대시보드 → 선택적으로 가벼운 팩)
+
+알려진 한계: 로그온 때 PowerShell 창이 아주 잠깐 깜빡일 수 있습니다(숨김 창으로 시작하기 전). 코드 서명이 없어서 보안 프로그램이 스크립트를 경고할 수 있습니다.
+
 ### 테스트
 
 ```powershell
@@ -123,6 +155,9 @@ powershell -ExecutionPolicy Bypass -File .\tests\Test-Export.ps1
 
 # 가벼운 AI용 팩(PNG 크기, summary.md 크기, 글자 히트맵, 짧은 기록 처리)을 검증
 powershell -ExecutionPolicy Bypass -File .\tests\Test-LightPack.ps1
+
+# 자동 실행·트레이·표시하기 창을 검증 (작업 스케줄러·시작 프로그램은 건드리지 않고, 창도 화면에 띄우지 않음)
+powershell -ExecutionPolicy Bypass -File .\tests\Test-AutoStart.ps1
 ```
 
 ### 측정 계획 (부팅 후 경과 시간)
@@ -162,7 +197,7 @@ boot_<부팅시각>\markers.jsonl     구간/메모 마커
 2. ✅ 데이터 파일: 와이드 CSV, `schema.md`, `summary.json`, 원인 후보 체크리스트
 3. ✅ 히트맵 HTML 대시보드 (절대/상대 색 기준 전환, 팬 통합 줄, 이상 순 정렬)
 4. ✅ 가벼운 AI용 팩: `summary.md`(글자 히트맵 포함), PNG 그래프, `charts_guide.md`
-5. 로그온 자동 실행, 제거 스크립트, 마커 패널
+5. ✅ 로그온 자동 실행, 제거 스크립트, 트레이 아이콘, 표시하기 창 (코드와 테스트 완료. 이 PC에 실제로 등록한 검증은 승인 후 진행)
 6. (선택) 사용자가 API 키 또는 로컬 AI 주소를 넣었을 때만 "AI에게 보내기"
 
 ## 라이선스

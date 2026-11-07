@@ -4,6 +4,7 @@
     .\Mark.ps1 end                # 구간 끝
     .\Mark.ps1 note "화면 잘림"   # 순간 메모 (이후 5분간 촘촘히 기록)
   수집기(Start-Collector.ps1)가 켜져 있어야 반영된다. 라벨에 개인정보를 쓰지 마세요.
+  (트레이 아이콘의 '표시하기 창'에서도 같은 일을 버튼으로 할 수 있다.)
 #>
 param(
   [Parameter(Mandatory, Position = 0)][ValidateSet('start', 'end', 'note')][string]$Action,
@@ -11,10 +12,5 @@ param(
   [string]$DataDir
 )
 . (Join-Path $PSScriptRoot 'Common.ps1')
-if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
-$cmd = Join-Path $DataDir 'cmd'
-New-Item -ItemType Directory -Path $cmd -Force | Out-Null
-$obj = [ordered]@{ action = $Action; label = (Protect-Text (($Label -join ' ').Trim())); at = (Get-Date).ToString('s') }
-$name = '{0}_{1}.json' -f (Get-Date).ToString('yyyyMMdd_HHmmss_fff'), $Action
-Write-JsonFile (Join-Path $cmd $name) $obj
+$obj = Send-Marker $Action ($Label -join ' ') $DataDir
 Write-Host ("마커 전달: {0} {1}" -f $Action, $obj.label)

@@ -58,3 +58,43 @@ function ConvertFrom-ThrottleMask([string]$Hex) {
   if ($rest -ne 0) { $names.Add(('0x{0:X}' -f $rest)) }
   $names -join '+'
 }
+
+# ---------------- 앱 위치 / 설정 / 마커 / 수집기 상태 (트레이·패널·설치 스크립트가 공유) ----------------
+function Get-AppRoot { Join-Path $env:LOCALAPPDATA 'PCCheckerWithAI' }
+
+# 구간/메모 마커를 수집기에 전달한다 (Mark.ps1 과 표시하기 패널이 같은 함수를 쓴다). 라벨은 저장 전에 마스킹한다.
+function Send-Marker([string]$Action, [string]$Label, [string]$DataDir) {
+  if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
+  $cmd = Join-Path $DataDir 'cmd'; New-Item -ItemType Directory -Path $cmd -Force | Out-Null
+  $obj = [ordered]@{ action = $Action; label = (Protect-Text ([string]$Label).Trim()); at = (Get-Date).ToString('s') }
+  $name = '{0}_{1}.json' -f (Get-Date).ToString('yyyyMMdd_HHmmss_fff'), $Action
+  Write-JsonFile (Join-Path $cmd $name) $obj
+  $obj
+}
+
+# 수집기 상태를 사람이 읽는 글로 (색이 아니라 기호+글자로 구분): running / stale / stopped / none
+function Get-CollectorState([string]$DataDir) {
+  if (-not $DataDir) { $DataDir = Get-DefaultDataDir }
+  $p = Join-Path $DataDir 'state.json'
+  if (-not (Test-Path $p)) { return @{ status = 'none'; text = '■ 아직 기록을 시작하지 않았어요'; open_segment = $null } }
+  try { $s = [IO.File]::ReadAllText($p, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { return @{ status = 'none'; text = '■ 상태 파일을 읽지 못했어요'; open_segment = $null } }
+  $age = (Get-Date) - [datetime]$s.updated
+  $seg = $(if ($s.open_segment) { [string]$s.open_segment } else { $null })
+  if ($s.phase -eq 'stopped') { return @{ status = 'stopped'; text = '■ 기록이 멈춰 있어요'; open_segment = $seg } }
+  if ($age.TotalSeconds -gt 45) { return @{ status = 'stale'; text = ('▲ 기록이 {0}분째 갱신되지 않아요' -f [math]::Max(1, [math]::Round($age.TotalMinutes))); open_segment = $seg } }
+  $ph = switch -Wildcard ([string]$s.phase) { 'boot_settle' { '부팅 직후' } 'baseline' { '기준선' } 'normal' { '일반' } 'segment:*' { '구간 기록' } default { [string]$s.phase } }
+  @{ status = 'running'; text = ('● 기록 중 · {0}{1}' -f $ph, $(if ($seg) { " · 열린 구간: $seg" } else { '' })); open_segment = $seg }
+}
+
+function Get-Settings([string]$Root) {
+  if (-not $Root) { $Root = Get-AppRoot }
+  $s = @{ welcome_balloon = $true; last_welcome_boot = ''; panel_topmost = $true }
+  $p = Join-Path $Root 'settings.json'
+  if (Test-Path $p) { try { $o = [IO.File]::ReadAllText($p, [Text.Encoding]::UTF8) | ConvertFrom-Json; foreach ($k in @($s.Keys)) { if ($null -ne $o.$k) { $s[$k] = $o.$k } } } catch { } }
+  $s
+}
+function Save-Settings($Settings, [string]$Root) {
+  if (-not $Root) { $Root = Get-AppRoot }
+  New-Item -ItemType Directory -Path $Root -Force | Out-Null
+  Write-JsonFile (Join-Path $Root 'settings.json') $Settings
+}
